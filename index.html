@@ -1,14 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Platformer Game with Screen Scroll</title>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; }
-        #gameCanvas { background-color: #87CEEB; }
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            background-color: #87CEEB;
+        }
     </style>
 </head>
+
 <body>
     <canvas id="gameCanvas" width="400" height="600"></canvas>
     <script>
@@ -16,9 +26,9 @@
         const ctx = canvas.getContext('2d');
 
         // Game settings
-        const gravity = 0.5;
-        const friction = 0.8;
-        const baseJump = -10; // Base jump velocity
+        const gravity = 0.48;
+        const friction = 0.9;
+        const baseJump = -11; // Base jump velocity
 
         // Player
         let player = {
@@ -26,33 +36,41 @@
             y: canvas.height - 150,
             width: 20,
             height: 20,
-            speed: 5,
+            speed: 5, // horizonal max speed
             velX: 0,
             velY: 0,
             jumping: false
         };
 
+        // score
+        let score = 0;
+
         // Platforms
         let platforms = [];
-        for(let i = 0; i < 10; i++) {
+        let platformCounter = 1;
+        const platformWidth = 150;
+        for (let i = 0; i < 10; i++) {
             platforms.push({
-                x: Math.random() * (canvas.width - 50),
+                x: Math.random() * (canvas.width - (platformWidth - (platformWidth / 2))) - platformWidth / 2,
                 y: canvas.height - (100 * i) - 50,
-                width: 100,
-                height: 10
+                width: platformWidth,
+                height: 10,
+                number: platformCounter++
             });
         }
+        // print to the console
+        console.log(platforms);
 
         // Key Listener
         let keys = [];
-        window.addEventListener('keydown', function(e) {
+        window.addEventListener('keydown', function (e) {
             keys[e.keyCode] = true;
-            if (e.keyCode == 32 && !player.jumping) { // Space key for jump
+            if (e.keyCode == 32 && !player.jumping && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
                 player.velY = baseJump - Math.abs(player.velX); // Higher jump if running faster
             }
         });
-        window.addEventListener('keyup', function(e) {
+        window.addEventListener('keyup', function (e) {
             keys[e.keyCode] = false;
         });
 
@@ -62,12 +80,17 @@
                 if (player.velX < player.speed) {
                     player.velX++;
                 }
-            }         
+            }
             if (keys[37]) { // left arrow
                 if (player.velX > -player.speed) {
                     player.velX--;
                 }
             }
+
+            // trying the possibility of not stopping the player when left/right key is pressed
+            // if (!keys[37] && !keys[39]) {
+            //     player.velX *= friction;
+            // }
 
             player.velX *= friction;
             player.velY += gravity;
@@ -76,13 +99,14 @@
             player.y += player.velY;
 
             // Screen scroll
-            if (player.y < canvas.height / 4) {
-                player.y += Math.abs(player.velY);
+            if (player.y < canvas.height / 4) { // player jumped above 1/4 of the canvas
+                player.y += Math.abs(player.velY); // If player is jumping (velocity is negative), cancel the movement by adding absolute value velocity (add positive value)
                 platforms.forEach(platform => {
-                    platform.y += Math.abs(player.velY);
-                    if (platform.y > canvas.height) {
-                        platform.y = 0;
-                        platform.x = Math.random() * (canvas.width - platform.width);
+                    platform.y += Math.abs(player.velY); // Move platforms down with the same amount of positive velocity
+                    if (platform.y > canvas.height) { // If platform is out of the canvas (below the canvas)
+                        platform.y = 0; // Move platform to the top
+                        platform.x = Math.random() * (canvas.width - platform.width); // Randomize x position
+                        platform.number = platformCounter++; // Increase platform number
                     }
                 });
             }
@@ -94,7 +118,7 @@
                 player.x = 0;
             }
 
-            if(player.y >= canvas.height - player.height){
+            if (player.y >= canvas.height - player.height) {
                 player.y = canvas.height - player.height;
                 player.jumping = false;
                 player.velY = 0;
@@ -105,13 +129,16 @@
                 if (
                     player.x < platform.x + platform.width &&
                     player.x + player.width > platform.x &&
-                    player.y + player.height > platform.y &&
+                    player.y + player.height >= platform.y &&
                     player.y + player.height < platform.y + platform.height &&
-                    player.velY >= 0
+                    player.velY >= 0 // Only when falling
                 ) {
                     player.jumping = false;
                     player.velY = 0;
                     player.y = platform.y - player.height;
+                    if (score < platform.number) {
+                        score = platform.number;
+                    }
                 }
             });
 
@@ -128,10 +155,16 @@
                 ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
             });
 
-            requestAnimationFrame(updateGame);
+            // Draw score
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText('Score: ' + score, 10, 30);
+
+            requestAnimationFrame(updateGame); // Loop
         }
 
         updateGame();
     </script>
 </body>
+
 </html>

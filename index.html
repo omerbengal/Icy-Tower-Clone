@@ -20,17 +20,21 @@
 </head>
 
 <body>
+    <audio id="gameAudio" src="icy-remix.mp3"></audio>
     <canvas id="gameCanvas" width="400" height="600"></canvas>
     <script>
+        //----------------------------- 🔻 Constants 🔻 -----------------------------/
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
-        // Game settings
+        //----------------------------- 🔺 Constants 🔺 -----------------------------/
+        ///////////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Game settings 🔻 -----------------------------/
         const gravity = 0.48;
         const friction = 0.85;
         const baseJump = -11; // Base jump velocity
-
-        // Player
+        //----------------------------- 🔺 Game settings 🔺 -----------------------------/
+        //////////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Player 🔻 -----------------------------/
         let player = {
             x: canvas.width / 2,
             y: canvas.height - 150,
@@ -41,27 +45,25 @@
             velY: 0,
             jumping: false
         };
-
-        // score
-        let score = 0;
-
-        // Platforms
+        //----------------------------- 🔺 Player 🔺 -----------------------------/
+        ////////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Platforms 🔻 -----------------------------/
         let platforms = [];
         let platformCounter = 0;
         const platformWidthRange = [150, 250];
         const platformHeight = 10;
         let platformGap = 75;
 
-        // function to generate random width for the platform
-        function randomWidth(number) {
-            if (number % 10 == 0) {
+        // Generate random width for the platform
+        function randomWidth(platrofmNumber) {
+            if (platrofmNumber % 10 == 0) {
                 return canvas.width;
             } else {
                 return Math.random() * (platformWidthRange[1] - platformWidthRange[0]) + platformWidthRange[0];
             }
         }
 
-        // function to generate random x for the platform
+        // Generate random x for the platform
         function randomX(platformWidth) {
             // return Math.random() * (canvas.width - (platformWidth - (platformWidth / 2))) - platformWidth / 2;
             if (platformWidth == canvas.width) {
@@ -71,13 +73,13 @@
             }
         }
 
-        // function to generate random width and random x for the platform
-        function randomWidthAndX(number) {
-            let width = randomWidth(number);
+        // Generate random width AND random x for the platform
+        function randomWidthAndX(platformNumber) {
+            let width = randomWidth(platformNumber);
             let x = randomX(width);
             return [width, x];
         }
-
+        // Generate the 10 platforms
         for (let i = 0; i < 10; i++) {
             let [tempWidth, tempX] = randomWidthAndX(i);
             platforms.push({
@@ -88,21 +90,72 @@
                 number: platformCounter++
             });
         }
-        let heighestPlatformIndex = 9;
-
-        // Key Listener
+        //----------------------------- 🔺 Platforms 🔺 -----------------------------/
+        ///////////////////////////////////////////////////////////////////////////////
+        //------------------------------ 🔻 Key events 🔻 ------------------------------/
         let keys = [];
         window.addEventListener('keydown', function (e) {
             keys[e.keyCode] = true;
             if (e.keyCode == 32 && !player.jumping && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
                 player.velY = baseJump - Math.abs(player.velX); // Higher jump if running faster
+                if (!isSpacebarPressedForAudio) {
+                    isSpacebarPressedForAudio = true;
+                    toggleMute();
+                }
             }
         });
         window.addEventListener('keyup', function (e) {
             keys[e.keyCode] = false;
         });
+        //------------------------------ 🔺 Key events 🔺 ------------------------------/
+        //////////////////////////////////////////////////////////////////////////////////
+        // ------------------------------ 🔻 Audio & Mute 🔻 ------------------------------/
+        const gameAudio = document.getElementById('gameAudio');
+        gameAudio.volume = 0.25;
+        let isMuted = true;
+        let soundIcon = '▶️';
+        let isSpacebarPressedForAudio = false; // For the audio to only start once when spacebar is pressed
 
+        function drawSpeakerIcon() {
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText(soundIcon, canvas.width - 30, 30);
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            if (isMuted) {
+                gameAudio.pause();
+                soundIcon = '▶️'
+            } else {
+                gameAudio.play();
+                soundIcon = '⏸️';
+            }
+            drawSpeakerIcon(); // Redraw the speaker icon
+        }
+
+        canvas.addEventListener('click', function (e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Check if the click occurred within the speaker icon bounds
+            if (x > canvas.width - 30 && x < canvas.width - 8 && y > 10 && y < 35) {
+                if (!isSpacebarPressedForAudio) {
+                    isSpacebarPressedForAudio = true;
+                }
+                toggleMute();
+            }
+        });
+        //------------------------------ 🔺 Audio & Mute 🔺 ------------------------------/
+        ///////////////////////////////////////////////////////////////////////////////////
+        //------------------------------ 🔻 Loop variables 🔻 ------------------------------/
+        let heighestPlatformIndex = 9; // The platform that needs to be generated - should be generated above the heighest platform
+        let score = 0;
+        //------------------------------ 🔺 Loop variables 🔺 ------------------------------/
+        //////////////////////////////////////////////////////////////////////////////////
+        //------------------------------ 🔻 Game loop 🔻 ------------------------------/
         function updateGame() {
             // Check key inputs
             if (keys[39]) { // right arrow
@@ -195,12 +248,15 @@
             ctx.fillRect(player.x, player.y, player.width, player.height);
 
             // Draw score
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = 'white';
             ctx.font = '20px Arial';
             ctx.fillText('Score: ' + score, 10, 30);
 
+            drawSpeakerIcon();
+
             requestAnimationFrame(updateGame); // Loop
         }
+        //------------------------------ 🔺 Game loop 🔺 ------------------------------/
 
         updateGame();
     </script>

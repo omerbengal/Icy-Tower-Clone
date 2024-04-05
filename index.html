@@ -46,6 +46,44 @@
             jumping: false
         };
         //----------------------------- 🔺 Player 🔺 -----------------------------/
+        ///////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Enemies 🔻 -----------------------------/
+        function createEnemy(type, platform) {
+            // calculate random x position for the enemy - but make sure it's within the canvas
+            let randomEnemyX = platform.x + Math.random() * (platform.width - 20);
+            if (randomEnemyX < 0) {
+                randomEnemyX = 0;
+            } else if (randomEnemyX + 20 > canvas.width) {
+                randomEnemyX = canvas.width - 20;
+            }
+            return {
+                type,
+                x: randomEnemyX, // Random starting position on the platform
+                y: platform.y - 20, // Positioned above the platform
+                width: 20,
+                height: 20,
+                speed: type === 2 ? 1 : 0, // Type 2 enemies move
+                direction: 1 // Direction for moving enemies
+            };
+        }
+
+        function updateEnemyPosition(enemy, platform) {
+            if (enemy.type === 2) {
+                enemy.x += enemy.speed * enemy.direction;
+                // Change direction if enemy reaches the edge of the platform
+                if (enemy.x <= Math.max(platform.x, 0) || enemy.x + enemy.width >= Math.min(platform.x + platform.width, canvas.width)) {
+                    enemy.direction *= -1;
+                }
+            }
+        }
+
+        function checkPlayerEnemyCollision(player, enemy) {
+            return player.x < enemy.x + enemy.width &&
+                player.x + player.width > enemy.x &&
+                player.y < enemy.y + enemy.height &&
+                player.y + player.height > enemy.y;
+        }
+        //----------------------------- 🔺 Enemies 🔺 -----------------------------/
         ////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Platforms 🔻 -----------------------------/
         let platforms = [];
@@ -87,11 +125,38 @@
                 y: canvas.height - (platformGap * i) - 50,
                 width: tempWidth,
                 height: platformHeight,
-                number: platformCounter++,
+                number: platformCounter,
                 playerStandTime: 0, // time in milliseconds the player has been on the platform
                 falling: false, // indicates whether the platform is falling
                 fallSpeed: 0 // speed at which the platform falls
             });
+            if (Math.random() < 0.05 && platformCounter % 10 != 0) {
+                const enemyType = Math.random() < 0.5 ? 1 : 2;
+                platforms[i].enemy = createEnemy(enemyType, platforms[i]);
+            }
+            platformCounter++;
+        }
+
+        function repositionPlatform(platform, index) {
+            if (platform.y > canvas.height) {
+                // If platform falls off-screen, reset it
+                let [tempWidth, tempX] = randomWidthAndX(platformCounter);
+                platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
+                platform.x = tempX;
+                platform.width = tempWidth;
+                platform.number = platformCounter; // Increase platform number
+                heighestPlatformIndex = index; // Update the heighest platform index
+                platform.playerStandTime = 0;
+                platform.falling = false;
+                platform.fallSpeed = 0;
+                if (Math.random() < 0.05 && platformCounter % 10 != 0) {
+                    const enemyType = Math.random() < 0.5 ? 1 : 2;
+                    platform.enemy = createEnemy(enemyType, platform);
+                } else {
+                    platform.enemy = null;
+                }
+                platformCounter++;
+            }
         }
         //----------------------------- 🔺 Platforms 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
@@ -102,7 +167,7 @@
             if (e.keyCode == 32 && !player.jumping && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
                 // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
-                player.velY = baseJump - Math.pow(Math.abs(player.velX), 2.4) * 0.1; // New "running faster = higher jump" - exponential growth
+                player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
                 if (!isSpacebarPressedForAudio) {
                     isSpacebarPressedForAudio = true;
                     toggleMute();
@@ -191,18 +256,11 @@
                 // Go over all platforms and move them down. If needed, move to the top
                 platforms.forEach(function callback(platform, index) {
                     platform.y += Math.abs(player.velY); // Move platforms down with the same amount of positive velocity
-                    if (platform.y > canvas.height) { // If platform is out of the canvas (below the canvas)
-                        let [tempWidth, tempX] = randomWidthAndX(platformCounter);
-                        // platform.y = 0; // Move platform to the top
-                        platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
-                        platform.x = tempX;
-                        platform.width = tempWidth;
-                        platform.number = platformCounter++; // Increase platform number
-                        heighestPlatformIndex = index; // Update the heighest platform index
-                        platform.playerStandTime = 0;
-                        platform.falling = false;
-                        platform.fallSpeed = 0;
+                    // if platform has enemy - move the enemy down
+                    if (platform.enemy) {
+                        platform.enemy.y += Math.abs(player.velY);
                     }
+                    repositionPlatform(platform, index);
                 });
             }
 
@@ -250,24 +308,29 @@
                 }
             });
 
+            // Check for player-enemy collisions
+            platforms.forEach(platform => {
+                if (platform.enemy) {
+                    updateEnemyPosition(platform.enemy, platform);
+                    if (checkPlayerEnemyCollision(player, platform.enemy)) {
+                        // Handle player's death (e.g., end game, reduce life)
+                        console.log("Game Over: You touched an enemy!");
+                        // Reset game or perform other game over actions
+                    }
+                }
+            });
+
             // Handle falling platforms
             platforms.forEach(function callback(platform, index) {
                 if (platform.falling) {
                     platform.fallSpeed += gravity; // Increase fall speed by gravity
                     platform.y += platform.fallSpeed; // Apply fall speed
+                    // if the platform has enemy - move the enemy down
+                    if (platform.enemy) {
+                        platform.enemy.y += platform.fallSpeed;
+                    }
                 }
-                if (platform.y > canvas.height) {
-                    // If platform falls off-screen, reset it
-                    let [tempWidth, tempX] = randomWidthAndX(platformCounter);
-                    platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
-                    platform.x = tempX;
-                    platform.width = tempWidth;
-                    platform.number = platformCounter++; // Increase platform number
-                    heighestPlatformIndex = index; // Update the heighest platform index
-                    platform.playerStandTime = 0;
-                    platform.falling = false;
-                    platform.fallSpeed = 0;
-                }
+                repositionPlatform(platform, index);
             });
 
             // Clear canvas
@@ -286,6 +349,14 @@
                 } else {
                     ctx.fillStyle = 'black';
                     ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                }
+            });
+
+            // Draw enemies
+            platforms.forEach(platform => {
+                if (platform.enemy) {
+                    ctx.fillStyle = platform.enemy.type === 1 ? 'blue' : 'orange';
+                    ctx.fillRect(platform.enemy.x, platform.enemy.y, platform.enemy.width, platform.enemy.height);
                 }
             });
 

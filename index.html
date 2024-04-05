@@ -30,7 +30,7 @@
         ///////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Game settings 🔻 -----------------------------/
         const gravity = 0.48;
-        const friction = 0.85;
+        const friction = 0.95;
         const baseJump = -11; // Base jump velocity
         //----------------------------- 🔺 Game settings 🔺 -----------------------------/
         //////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@
             y: canvas.height - 150,
             width: 20,
             height: 20,
-            speed: 5, // horizonal max speed
+            speed: 50, // horizonal max speed
             velX: 0,
             velY: 0,
             jumping: false
@@ -98,7 +98,8 @@
             keys[e.keyCode] = true;
             if (e.keyCode == 32 && !player.jumping && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
-                player.velY = baseJump - Math.abs(player.velX); // Higher jump if running faster
+                // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
+                player.velY = baseJump - Math.pow(Math.abs(player.velX), 2.4) * 0.1; // New "running faster = higher jump" - exponential growth
                 if (!isSpacebarPressedForAudio) {
                     isSpacebarPressedForAudio = true;
                     toggleMute();
@@ -160,12 +161,12 @@
             // Check key inputs
             if (keys[39]) { // right arrow
                 if (player.velX < player.speed) {
-                    player.velX++;
+                    player.velX += 0.33;
                 }
             }
             if (keys[37]) { // left arrow
                 if (player.velX > -player.speed) {
-                    player.velX--;
+                    player.velX -= 0.33;
                 }
             }
 

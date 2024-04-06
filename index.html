@@ -54,7 +54,12 @@
         //----------------------------- 🔺 Resize canvas for mobile 🔺 -----------------------------/
         /////////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Game settings 🔻 -----------------------------/
-        const gravity = 0.48;
+        let gravity = 0;
+        if (isMobileDevice()) {
+            gravity = 1.75;
+        } else {
+            gravity = 0.48;
+        }
         const friction = 0.95;
         const baseJump = -11; // Base jump velocity
         //----------------------------- 🔺 Game settings 🔺 -----------------------------/
@@ -253,7 +258,7 @@
             // Upward swipe detection
             if (!player.jumping && player.onPlatform && lastTouchY - touchMoveY > 10) { // 10 = minimum swipe distance
                 player.jumping = true;
-                player.velY = baseJump - Math.abs(player.velX) * 0.55;
+                player.velY = baseJump * 1.925 - Math.abs(player.velX) * 0.75;
                 isSwipeUpDetected = true;
             }
 

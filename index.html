@@ -180,7 +180,7 @@
         function chooseIfVerticalMovingPlatform(platform) {
             if (Math.random() < verticalMovingPlatformRatio && platformCounter % 10 != 0) { // Approximately 6% chance
                 platform.verticalMoving = true;
-                platform.verticalSpeed = 0.1; // Speed of vertical movement
+                platform.verticalSpeed = 0.15; // Speed of vertical movement
                 platform.maxVerticalMovement = 50; // Maximum distance the platform moves vertically
                 platform.currentVerticalMovement = 0; // Current distance moved
                 platform.movingUp = Math.random() < 0.5; // Randomly decide initial direction
@@ -229,7 +229,7 @@
 
         function updateVerticalMovement(platform) {
             if (platform.verticalMoving) {
-                platform.currentVerticalMovement += 0.25; // change for longer movement distance
+                platform.currentVerticalMovement += 0.075; // lower = larger distance
 
                 // Use sine wave for smooth easing transition
                 let sineWave = Math.sin(platform.currentVerticalMovement * platform.verticalSpeed);
@@ -642,6 +642,7 @@
 
                             if (platform.playerStandTime > 240) {
                                 platform.falling = true;
+                                platform.isMoving = false;
                             }
                         }
                     } else {

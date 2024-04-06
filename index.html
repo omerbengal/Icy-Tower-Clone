@@ -122,6 +122,8 @@
         const platformWidthRange = [200, 350];
         const platformHeight = 10;
         let platformGap = 75;
+        let enemyOnPlatformRatio = 0.05; // 5% chance of enemy on platform
+        let verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
 
         // Generate random width for the platform
         function randomWidth(platrofmNumber) {
@@ -148,6 +150,24 @@
             let x = randomX(width);
             return [width, x];
         }
+
+        function chooseIfEnemyOnPlatform(platform) {
+            if (Math.random() < enemyOnPlatformRatio && platformCounter % 10 != 0) {
+                const enemyType = Math.random() < 0.5 ? 1 : 2;
+                platform.enemy = createEnemy(enemyType, platform);
+            }
+        }
+
+        function chooseIfVerticalMovingPlatform(platform) {
+            if (Math.random() < verticalMovingPlatformRatio && platformCounter % 10 != 0) { // Approximately 6% chance
+                platform.verticalMoving = true;
+                platform.verticalSpeed = 0.1; // Speed of vertical movement
+                platform.maxVerticalMovement = 50; // Maximum distance the platform moves vertically
+                platform.currentVerticalMovement = 0; // Current distance moved
+                platform.movingUp = Math.random() < 0.5; // Randomly decide initial direction
+            }
+        }
+
         // Generate the 10 platforms
         for (let i = 0; i < 10; i++) {
             let [tempWidth, tempX] = randomWidthAndX();
@@ -161,10 +181,10 @@
                 falling: false, // indicates whether the platform is falling
                 fallSpeed: 0 // speed at which the platform falls
             });
-            if (Math.random() < 0.05 && platformCounter % 10 != 0) {
-                const enemyType = Math.random() < 0.5 ? 1 : 2;
-                platforms[i].enemy = createEnemy(enemyType, platforms[i]);
-            }
+
+            chooseIfEnemyOnPlatform(platforms[i]);
+            chooseIfVerticalMovingPlatform(platforms[i]);
+
             platformCounter++;
         }
 
@@ -180,15 +200,29 @@
                 platform.playerStandTime = 0;
                 platform.falling = false;
                 platform.fallSpeed = 0;
-                if (Math.random() < 0.05 && platformCounter % 10 != 0) {
-                    const enemyType = Math.random() < 0.5 ? 1 : 2;
-                    platform.enemy = createEnemy(enemyType, platform);
-                } else {
-                    platform.enemy = null;
-                }
+
+                chooseIfEnemyOnPlatform(platform);
+                chooseIfVerticalMovingPlatform(platform);
+
                 platformCounter++;
             }
         }
+
+        function updateVerticalMovement(platform) {
+            if (platform.verticalMoving) {
+                platform.currentVerticalMovement += 0.25; // change for longer movement distance
+
+                // Use sine wave for smooth easing transition
+                let sineWave = Math.sin(platform.currentVerticalMovement * platform.verticalSpeed);
+                platform.y += sineWave * platform.verticalSpeed;
+
+                // Move enemy if exists
+                if (platform.enemy) {
+                    platform.enemy.y += sineWave * platform.verticalSpeed;
+                }
+            }
+        }
+
         //----------------------------- 🔺 Platforms 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
         //------------------------------ 🔻 Key events 🔻 ------------------------------/
@@ -388,18 +422,6 @@
 
         }
 
-        // canvas.addEventListener('click', function (e) {
-        //     if (gameOver) {
-        //         const rect = canvas.getBoundingClientRect();
-        //         const x = e.clientX - rect.left;
-        //         const y = e.clientY - rect.top;
-
-        //         // Check if the click occurred within the play again button bounds
-        //         if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height / 8 - 20 && y < canvas.height / 8) {
-        //             resetGame();
-        //         }
-        //     }
-        // });
         function handlePlayAgainInteraction(e) {
             let clientX, clientY;
             if (e.type === 'click') {
@@ -474,10 +496,16 @@
         //////////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Collision detection 🔻 -----------------------------/
         function calculateTOI(player, platform) {
-            // TOI for Y-axis (since the player falls vertically)
             if (player.velY <= 0) return Infinity; // Ignore if moving upwards or stationary
 
-            const timeToCollide = (platform.y - player.height - player.y) / player.velY;
+            let effectivePlatformY = platform.y;
+            if (platform.verticalMoving) {
+                // If platform is moving upwards, adjust its effective position for collision detection
+                let sineWave = Math.sin(platform.currentVerticalMovement * platform.verticalSpeed);
+                effectivePlatformY -= sineWave * platform.verticalSpeed;
+            }
+
+            const timeToCollide = (effectivePlatformY - player.height - player.y) / player.velY;
             return timeToCollide >= 0 && timeToCollide <= 1 ? timeToCollide : Infinity;
         }
 
@@ -612,6 +640,11 @@
                         }
                     }
                     repositionPlatform(platform, index);
+                });
+
+                // Handle vertical moving platforms
+                platforms.forEach(platform => {
+                    updateVerticalMovement(platform);
                 });
 
                 // Clear canvas

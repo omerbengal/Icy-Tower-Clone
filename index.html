@@ -83,9 +83,9 @@
             // calculate random x position for the enemy - but make sure it's within the canvas
             let randomEnemyX = platform.x + Math.random() * (platform.width - 20);
             if (randomEnemyX < 0) {
-                randomEnemyX = 0;
+                randomEnemyX = 10; // margin from the left
             } else if (randomEnemyX + 20 > canvas.width) {
-                randomEnemyX = canvas.width - 20;
+                randomEnemyX = canvas.width - 30; // margin from the right
             }
             return {
                 type,
@@ -119,20 +119,39 @@
         //----------------------------- 🔻 Platforms 🔻 -----------------------------/
         let platforms = [];
         let platformCounter = 0;
-        const platformWidthRange = [200, 350];
         const platformHeight = 10;
-        let platformGap = 75;
+
+        const initialPlatformWidthRange = [200, 350];
+        const widthRangeBottomValueDecreaseStep = 10; // The amount by which the range decreases
+        const widthRangeTopValueDecreaseStep = 20; // The amount by which the range decreases
+        const widthRangeInterval = 20; // Interval after which the range decreases
+
+        let platformWidthRange = [...initialPlatformWidthRange];
+
+        const initialPlatformGap = 75;
+        const gapIncreaseStep = 20; // The amount by which the gap increases
+        const gapInterval = 10; // Interval after which the gap increases
+
+        let platformGap = initialPlatformGap;
+
+
         let enemyOnPlatformRatio = 0.05; // 5% chance of enemy on platform
         let verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
 
         // Generate random width for the platform
-        function randomWidth(platrofmNumber) {
-            if (platrofmNumber % 10 == 0) {
+        function randomWidth() {
+            if ((platformCounter - 1) % widthRangeInterval === 0 && platformCounter !== 0 && platformCounter !== 1) {
+                platformWidthRange[0] = Math.max(platformWidthRange[0] - widthRangeBottomValueDecreaseStep, 50); // Lower limit to prevent too narrow platforms
+                platformWidthRange[1] = Math.max(platformWidthRange[1] - widthRangeTopValueDecreaseStep, platformWidthRange[0]);
+            }
+
+            if (platformCounter % 10 === 0) {
                 return canvas.width;
             } else {
                 return Math.random() * (platformWidthRange[1] - platformWidthRange[0]) + platformWidthRange[0];
             }
         }
+
 
         // Generate random x for the platform
         function randomX(platformWidth) {
@@ -189,8 +208,8 @@
         }
 
         function repositionPlatform(platform, index) {
-            if (platform.y > canvas.height) {
-                // If platform falls off-screen, reset it
+            if (platform.y > canvas.height) { // If platform falls off-screen, reset it
+                updatePlatformGap();
                 let [tempWidth, tempX] = randomWidthAndX();
                 platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
                 platform.x = tempX;
@@ -220,6 +239,15 @@
                 if (platform.enemy) {
                     platform.enemy.y += sineWave * platform.verticalSpeed;
                 }
+            }
+        }
+
+        function updatePlatformGap() {
+            // Check if the current platform number is divisible by the gapInterval (10)
+            // and it's not the first platform (number 0)
+            // This will update the gap starting from the 11th, 21st, 31st platforms, etc.
+            if ((platformCounter - 1) % gapInterval === 0 && platformCounter !== 0 && platformCounter !== 1) {
+                platformGap += gapIncreaseStep;
             }
         }
 
@@ -472,6 +500,8 @@
             // isSpacebarPressedForAudio = false;
             heighestPlatformIndex = 9;
             score = 0;
+            platformWidthRange = [...initialPlatformWidthRange];
+            platformGap = initialPlatformGap;
             for (let i = 0; i < 10; i++) {
                 let [tempWidth, tempX] = randomWidthAndX();
                 platforms.push({

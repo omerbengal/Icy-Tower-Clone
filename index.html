@@ -11,6 +11,12 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            -webkit-user-select: none;
+            /* Safari */
+            -ms-user-select: none;
+            /* IE 10 and IE 11 */
+            user-select: none;
+            /* Standard syntax */
         }
 
         #gameCanvas {
@@ -21,6 +27,7 @@
 
 <body>
     <audio id="gameAudio" src="icy-remix.mp3"></audio>
+    <audio id="gameAudioLower" src="icy-remix-lower-volume.mp3"></audio>
     <canvas id="gameCanvas" width="400" height="600"></canvas>
     <script>
         //----------------------------- 🔻 Constants 🔻 -----------------------------/
@@ -28,6 +35,24 @@
         const ctx = canvas.getContext('2d');
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Resize canvas for mobile 🔻 -----------------------------/
+        function isMobileDevice() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+            // Regular expressions for mobile User Agent detection
+            return /android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+        }
+
+        function resizeCanvas() {
+            if (isMobileDevice()) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        //----------------------------- 🔺 Resize canvas for mobile 🔺 -----------------------------/
+        /////////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Game settings 🔻 -----------------------------/
         const gravity = 0.48;
         const friction = 0.95;
@@ -43,7 +68,8 @@
             speed: 50, // horizonal max speed
             velX: 0,
             velY: 0,
-            jumping: false
+            jumping: false,
+            onPlatform: true
         };
         //----------------------------- 🔺 Player 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////
@@ -112,14 +138,14 @@
         }
 
         // Generate random width AND random x for the platform
-        function randomWidthAndX(platformNumber) {
-            let width = randomWidth(platformNumber);
+        function randomWidthAndX() {
+            let width = randomWidth(platformCounter);
             let x = randomX(width);
             return [width, x];
         }
         // Generate the 10 platforms
         for (let i = 0; i < 10; i++) {
-            let [tempWidth, tempX] = randomWidthAndX(platformCounter);
+            let [tempWidth, tempX] = randomWidthAndX();
             platforms.push({
                 x: tempX,
                 y: canvas.height - (platformGap * i) - 50,
@@ -140,7 +166,7 @@
         function repositionPlatform(platform, index) {
             if (platform.y > canvas.height) {
                 // If platform falls off-screen, reset it
-                let [tempWidth, tempX] = randomWidthAndX(platformCounter);
+                let [tempWidth, tempX] = randomWidthAndX();
                 platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
                 platform.x = tempX;
                 platform.width = tempWidth;
@@ -164,7 +190,7 @@
         let keys = [];
         window.addEventListener('keydown', function (e) {
             keys[e.keyCode] = true;
-            if (e.keyCode == 32 && !player.jumping && !player.velY > 0) { // Space key for jump
+            if (e.keyCode == 32 && !player.jumping && player.onPlatform && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
                 // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
                 player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
@@ -179,9 +205,85 @@
         });
         //------------------------------ 🔺 Key events 🔺 ------------------------------/
         //////////////////////////////////////////////////////////////////////////////////
+        //------------------------------ 🔻 Touch events for mobile 🔻 ------------------------------/
+
+        // Variables to store touch positions and time
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let lastTouchX;
+        let lastTouchY;
+        let lastTouchTime;
+        let isSwipeUpDetected = false; // Flag to check if swipe up is already detected
+
+        // Add touch event listeners
+        canvas.addEventListener('touchstart', function (e) {
+            if (!isSpacebarPressedForAudio) {
+                isSpacebarPressedForAudio = true;
+                toggleMute();
+            }
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            lastTouchX = touchStartX;
+            lastTouchY = touchStartY;
+            lastTouchTime = Date.now(); // Record the start time
+            isSwipeUpDetected = false; // Reset swipe up detection
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', function (e) {
+            e.preventDefault();
+            let touchMoveX = e.touches[0].clientX;
+            let touchMoveY = e.touches[0].clientY;
+            let currentTime = Date.now();
+
+            let deltaX = touchMoveX - lastTouchX;
+            let deltaTime = currentTime - lastTouchTime;
+
+            // Normalize the swipe speed
+            let swipeSensitivity = 2.5; // Adjust for sensitivity
+            let maxSwipeSpeed = 50; // Maximum speed per swipe
+
+            if (deltaTime > 0) { // Avoid division by zero
+                let swipeSpeed = (deltaX / deltaTime) * swipeSensitivity;
+                swipeSpeed = Math.max(Math.min(swipeSpeed, maxSwipeSpeed), -maxSwipeSpeed);
+                player.velX += swipeSpeed;
+                player.velX = Math.max(Math.min(player.velX, player.speed), -player.speed);
+            }
+
+            // Upward swipe detection
+            if (!player.jumping && player.onPlatform && lastTouchY - touchMoveY > 10) { // 10 = minimum swipe distance
+                player.jumping = true;
+                player.velY = baseJump - Math.abs(player.velX) * 0.55;
+                isSwipeUpDetected = true;
+            }
+
+            lastTouchX = touchMoveX;
+            lastTouchY = touchMoveY;
+            lastTouchTime = currentTime;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', function (e) {
+            e.preventDefault();
+            // Reset variables on touch end
+            touchStartX = 0;
+            touchStartY = 0;
+            lastTouchX = 0;
+            lastTouchY = 0;
+            lastTouchTime = 0;
+            player.velX = 0; // Adjust for smoother stopping
+            isSwipeUpDetected = false; // Reset swipe up detection
+        }, { passive: false });
+
+        //------------------------------ 🔺 Touch events for mobile 🔺 ------------------------------/
+        ////////////////////////////////////////////////////////////////////////////////////////
         // ------------------------------ 🔻 Audio & Mute 🔻 ------------------------------/
-        const gameAudio = document.getElementById('gameAudio');
-        gameAudio.volume = 0.25;
+        let gameAudio = null;
+        if (isMobileDevice()) {
+            gameAudio = document.getElementById('gameAudioLower');
+        } else {
+            gameAudio = document.getElementById('gameAudio');
+            gameAudio.volume = 0.2;
+        }
         let isMuted = true;
         let soundIcon = '▶️';
         let isSpacebarPressedForAudio = false; // For the audio to only start once when spacebar is pressed
@@ -204,19 +306,34 @@
             drawSpeakerIcon(); // Redraw the speaker icon
         }
 
-        canvas.addEventListener('click', function (e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+        function handleMuteToggle(e) {
+            let clientX, clientY;
+            if (e.type === 'click') {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.type === 'touchstart') {
+                // Prevent default behavior to avoid double handling if 'click' event also fires
+                e.preventDefault();
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
 
-            // Check if the click occurred within the speaker icon bounds
-            if (x > canvas.width - 30 && x < canvas.width - 8 && y > 10 && y < 35) {
+            const rect = canvas.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            // Check if the event occurred within the speaker icon bounds
+            if (x > canvas.width - 35 && x < canvas.width && y > 0 && y < 40) {
                 if (!isSpacebarPressedForAudio) {
                     isSpacebarPressedForAudio = true;
                 }
                 toggleMute();
             }
-        });
+        }
+
+        // Listen for click and touchstart events
+        canvas.addEventListener('click', handleMuteToggle);
+        canvas.addEventListener('touchstart', handleMuteToggle, { passive: false });
         //------------------------------ 🔺 Audio & Mute 🔺 ------------------------------/
         /////////////////////////////////////////////////////////////////////////////////
         //------------------------------ 🔻 Game over 🔻 ------------------------------/
@@ -266,6 +383,48 @@
 
         }
 
+        // canvas.addEventListener('click', function (e) {
+        //     if (gameOver) {
+        //         const rect = canvas.getBoundingClientRect();
+        //         const x = e.clientX - rect.left;
+        //         const y = e.clientY - rect.top;
+
+        //         // Check if the click occurred within the play again button bounds
+        //         if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height / 8 - 20 && y < canvas.height / 8) {
+        //             resetGame();
+        //         }
+        //     }
+        // });
+        function handlePlayAgainInteraction(e) {
+            let clientX, clientY;
+            if (e.type === 'click') {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.type === 'touchstart') {
+                e.preventDefault();
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+
+            if (gameOver) {
+                const rect = canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                // Check if the interaction occurred within the play again button bounds
+                if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height / 8 - 20 && y < canvas.height / 8) {
+                    resetGame();
+                }
+            }
+        }
+
+        // Listen for click and touchstart events
+        canvas.addEventListener('click', handlePlayAgainInteraction);
+        canvas.addEventListener('touchstart', handlePlayAgainInteraction, { passive: false });
+
+        //----------------------------- 🔺 Game over 🔺 -----------------------------/
+        //////////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Reset game 🔻 -----------------------------/
         function resetGame() {
             gameOver = false;
             player = {
@@ -276,17 +435,18 @@
                 speed: 50, // horizonal max speed
                 velX: 0,
                 velY: 0,
-                jumping: false
+                jumping: false,
+                onPlatform: true
             };
             platforms = [];
             platformCounter = 0;
             isMuted = true;
             soundIcon = '▶️';
-            isSpacebarPressedForAudio = false;
+            // isSpacebarPressedForAudio = false;
             heighestPlatformIndex = 9;
             score = 0;
             for (let i = 0; i < 10; i++) {
-                let [tempWidth, tempX] = randomWidthAndX(platformCounter);
+                let [tempWidth, tempX] = randomWidthAndX();
                 platforms.push({
                     x: tempX,
                     y: canvas.height - (platformGap * i) - 50,
@@ -305,20 +465,7 @@
             }
             updateGame();
         }
-
-        canvas.addEventListener('click', function (e) {
-            if (gameOver) {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                // Check if the click occurred within the play again button bounds
-                if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height / 8 - 20 && y < canvas.height / 8) {
-                    resetGame();
-                }
-            }
-        });
-        //----------------------------- 🔺 Game over 🔺 -----------------------------/
+        //----------------------------- 🔺 Reset game 🔺 -----------------------------/
         /////////////////////////////////////////////////////////////////////////////////
         //------------------------------ 🔻 Loop variables 🔻 ------------------------------/
         let heighestPlatformIndex = 9; // The platform that needs to be generated - should be generated above the heighest platform
@@ -376,11 +523,13 @@
                 if (player.y >= canvas.height - player.height) {
                     player.y = canvas.height - player.height;
                     player.jumping = false;
+                    player.onPlatform = false;
                     player.velY = 0;
                     gameOver = true;
                 }
 
                 // Platform collision
+                player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
                 platforms.forEach(function callback(platform, index) {
                     let predictedY = player.y + player.velY;
                     if (
@@ -394,6 +543,7 @@
                         player.jumping = false;
                         player.velY = 0;
                         player.y = platform.y - player.height;
+                        player.onPlatform = true;
 
                         if (score < platform.number) { // Update the score
                             score = platform.number;
@@ -473,6 +623,8 @@
                 ctx.fillText('Score: ' + score, 10, 30);
 
                 drawSpeakerIcon();
+
+                // console.log(player.onPlatform);
 
                 requestAnimationFrame(updateGame); // Loop
             } else {

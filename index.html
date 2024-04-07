@@ -418,11 +418,11 @@
             ctx.font = '20px Rubik';
             let TopTenScoresTextMetrics = ctx.measureText('Top 10 Scores:');
             let TopTenScoresTextWidth = TopTenScoresTextMetrics.width;
-            ctx.fillText('Top 10 Scores:', canvas.width / 2 - TopTenScoresTextWidth / 2, (canvas.height / 4) + 60);
+            ctx.fillText('Top 10 Scores:', canvas.width / 2 - TopTenScoresTextWidth / 2, (canvas.height / 4) + 100);
             for (let i = 0; i < topTenScores.length; i++) {
                 let scoreListItemTextMetrics = ctx.measureText(`${topTenScores[i]}`);
                 let scoreListItemTextWidth = scoreListItemTextMetrics.width;
-                ctx.fillText(`${topTenScores[i]}`, canvas.width / 2 - scoreListItemTextWidth / 2, ((canvas.height / 4) + 60) + ((i + 1) * 30));
+                ctx.fillText(`${topTenScores[i]}`, canvas.width / 2 - scoreListItemTextWidth / 2, ((canvas.height / 4) + 100) + ((i + 1) * 30));
             }
         }
 
@@ -437,6 +437,13 @@
             const gameOverTextMetrics = ctx.measureText("GAME OVER");
             const gameOverTextWidth = gameOverTextMetrics.width;
             ctx.fillText("GAME OVER", canvas.width / 2 - gameOverTextWidth / 2, canvas.height / 4);
+
+            // Display the player's score
+            ctx.fillStyle = 'black';
+            ctx.font = '30px Rubik';
+            const scoreTextMetrics = ctx.measureText(`Score: ${score}`);
+            const scoreTextWidth = scoreTextMetrics.width;
+            ctx.fillText(`Score: ${score}`, canvas.width / 2 - scoreTextWidth / 2, (canvas.height / 4) + 50);
 
             // Display top 10 scores
             displayTopTenScores();

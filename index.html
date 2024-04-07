@@ -33,6 +33,53 @@
         //----------------------------- 🔻 Constants 🔻 -----------------------------/
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const animationImage = new Image();
+        animationImage.src = 'MegaMan.png';
+        const animationImageReversed = new Image();
+        animationImageReversed.src = 'MegaManReversed.png';
+        const playerStates = { idle: 0, jump: 1, run: 2 };
+        let currentPlayerState = playerStates.idle;
+        const spriteAnimations = [
+            {
+                name: 'idle',
+                playerAnimationDelayer: 20,
+                data: [
+                    { x: 60 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 95 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 130 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 166 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 201 - (33 - 27), y: 353, width: 33, height: 34 }
+                ]
+            },
+            {
+                name: 'jump',
+                playerAnimationDelayer: 100,
+                data: [
+                    // { x: 484 - (33 - 21), y: 428, width: 33, height: 38 },
+                    { x: 517 - (33 - 32), y: 426, width: 33, height: 40 }
+                    // { x: 556 - (33 - 34), y: 431, width: 33, height: 38 },
+                    // { x: 599 - (33 - 27), y: 433, width: 33, height: 33 }
+                ]
+            },
+            {
+                name: 'run',
+                playerAnimationDelayer: 13,
+                data: [
+                    { x: 54, y: 426, width: 33, height: 35 },
+                    { x: 105 - (33 - 25), y: 427, width: 33, height: 34 },
+                    { x: 146 - (33 - 17), y: 426, width: 33, height: 35 },
+                    { x: 178 - (33 - 26), y: 426, width: 33, height: 35 },
+                    { x: 221 - (33 - 29), y: 427, width: 33, height: 33 },
+                    { x: 266, y: 426, width: 33, height: 35 },
+                    { x: 314 - (33 - 25), y: 427, width: 33, height: 34 },
+                    { x: 356 - (33 - 17), y: 426, width: 33, height: 35 },
+                    { x: 390 - (33 - 26), y: 426, width: 33, height: 35 },
+                    { x: 429 - (33 - 29), y: 427, width: 33, height: 33 }
+
+                ]
+            }
+        ];
+        let animationProgress = 0;
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Resize canvas for mobile 🔻 -----------------------------/
@@ -51,6 +98,8 @@
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
+        const CANVAS_WIDTH = canvas.width;
+        const CANVAS_HEIGHT = canvas.height;
         //----------------------------- 🔺 Resize canvas for mobile 🔺 -----------------------------/
         /////////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Game settings 🔻 -----------------------------/
@@ -65,34 +114,40 @@
         //----------------------------- 🔺 Game settings 🔺 -----------------------------/
         //////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Player 🔻 -----------------------------/
+        const playerWidth = 30;
+        const playerHeight = 30;
+        const playerStartY = CANVAS_HEIGHT - 100;
         let player = {
-            x: (canvas.width / 2) - 10,
-            y: canvas.height - 70,
-            width: 20,
-            height: 20,
+            x: (CANVAS_WIDTH / 2) - 10,
+            y: playerStartY,
+            width: playerWidth,
+            height: playerHeight,
             speed: 50, // horizonal max speed
             velX: 0,
             velY: 0,
+            movingToSide: false,
             jumping: false,
             onPlatform: true
         };
         //----------------------------- 🔺 Player 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Enemies 🔻 -----------------------------/
+        const enemyWidth = 20;
+        const enemyHeight = 20;
         function createEnemy(type, platform) {
             // calculate random x position for the enemy - but make sure it's within the canvas
             let randomEnemyX = platform.x + Math.random() * (platform.width - 20);
             if (randomEnemyX < 0) {
                 randomEnemyX = 10; // margin from the left
-            } else if (randomEnemyX + 20 > canvas.width) {
-                randomEnemyX = canvas.width - 30; // margin from the right
+            } else if (randomEnemyX + 20 > CANVAS_WIDTH) {
+                randomEnemyX = CANVAS_WIDTH - 30; // margin from the right
             }
             return {
                 type,
                 x: randomEnemyX, // Random starting position on the platform
                 y: platform.y - 20, // Positioned above the platform
-                width: 20,
-                height: 20,
+                width: enemyWidth,
+                height: enemyHeight,
                 speed: type === 2 ? 1 : 0, // Type 2 enemies move
                 direction: 1 // Direction for moving enemies
             };
@@ -102,7 +157,7 @@
             if (enemy.type === 2) {
                 enemy.x += enemy.speed * enemy.direction;
                 // Change direction if enemy reaches the edge of the platform
-                if (enemy.x <= Math.max(platform.x, 0) || enemy.x + enemy.width >= Math.min(platform.x + platform.width, canvas.width)) {
+                if (enemy.x <= Math.max(platform.x, 0) || enemy.x + enemy.width >= Math.min(platform.x + platform.width, CANVAS_WIDTH)) {
                     enemy.direction *= -1;
                 }
             }
@@ -146,7 +201,7 @@
             }
 
             if (platformCounter % 10 === 0) {
-                return canvas.width;
+                return CANVAS_WIDTH;
             } else {
                 return Math.random() * (platformWidthRange[1] - platformWidthRange[0]) + platformWidthRange[0];
             }
@@ -155,11 +210,11 @@
 
         // Generate random x for the platform
         function randomX(platformWidth) {
-            // return Math.random() * (canvas.width - (platformWidth - (platformWidth / 2))) - platformWidth / 2;
-            if (platformWidth == canvas.width) {
+            // return Math.random() * (CANVAS_WIDTH - (platformWidth - (platformWidth / 2))) - platformWidth / 2;
+            if (platformWidth == CANVAS_WIDTH) {
                 return 0;
             } else {
-                return (Math.random() * canvas.width) - platformWidth / 2;
+                return (Math.random() * CANVAS_WIDTH) - platformWidth / 2;
             }
         }
 
@@ -192,7 +247,7 @@
             let [tempWidth, tempX] = randomWidthAndX();
             platforms.push({
                 x: tempX,
-                y: canvas.height - (platformGap * i) - 50,
+                y: CANVAS_HEIGHT - (platformGap * i) - 50,
                 width: tempWidth,
                 height: platformHeight,
                 number: platformCounter,
@@ -208,7 +263,7 @@
         }
 
         function repositionPlatform(platform, index) {
-            if (platform.y > canvas.height) { // If platform falls off-screen, reset it
+            if (platform.y - enemyHeight > CANVAS_HEIGHT) { // If platform falls off-screen, reset it
                 updatePlatformGap();
                 let [tempWidth, tempX] = randomWidthAndX();
                 platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
@@ -259,6 +314,8 @@
             keys[e.keyCode] = true;
             if (e.keyCode == 32 && !player.jumping && player.onPlatform && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
+                currentPlayerState = playerStates.jump;
+                animationProgress = 0;
                 // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
                 player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
                 if (!isSpacebarPressedForAudio) {
@@ -320,6 +377,8 @@
             // Upward swipe detection
             if (!player.jumping && player.onPlatform && lastTouchY - touchMoveY > 10) { // 10 = minimum swipe distance
                 player.jumping = true;
+                currentPlayerState = playerStates.jump;
+                animationProgress = 0;
                 player.velY = baseJump * 1.9 - Math.abs(player.velX) * 0.75;
                 isSwipeUpDetected = true;
             }
@@ -358,7 +417,7 @@
         function drawSpeakerIcon() {
             ctx.fillStyle = 'black';
             ctx.font = '20px Rubik';
-            ctx.fillText(soundIcon, canvas.width - 30, 30);
+            ctx.fillText(soundIcon, CANVAS_WIDTH - 30, 30);
         }
 
         function toggleMute() {
@@ -390,7 +449,7 @@
             const y = clientY - rect.top;
 
             // Check if the event occurred within the speaker icon bounds
-            if (x > canvas.width - 35 && x < canvas.width && y > 0 && y < 40) {
+            if (x > CANVAS_WIDTH - 35 && x < CANVAS_WIDTH && y > 0 && y < 40) {
                 if (!isSpacebarPressedForAudio) {
                     isSpacebarPressedForAudio = true;
                 }
@@ -418,32 +477,35 @@
             ctx.font = '20px Rubik';
             let TopTenScoresTextMetrics = ctx.measureText('Top 10 Scores:');
             let TopTenScoresTextWidth = TopTenScoresTextMetrics.width;
-            ctx.fillText('Top 10 Scores:', canvas.width / 2 - TopTenScoresTextWidth / 2, (canvas.height / 4) + 100);
+            ctx.fillText('Top 10 Scores:', CANVAS_WIDTH / 2 - TopTenScoresTextWidth / 2, (CANVAS_HEIGHT / 4) + 100);
             for (let i = 0; i < topTenScores.length; i++) {
                 let scoreListItemTextMetrics = ctx.measureText(`${topTenScores[i]}`);
                 let scoreListItemTextWidth = scoreListItemTextMetrics.width;
-                ctx.fillText(`${topTenScores[i]}`, canvas.width / 2 - scoreListItemTextWidth / 2, ((canvas.height / 4) + 100) + ((i + 1) * 30));
+                ctx.fillText(`${topTenScores[i]}`, CANVAS_WIDTH / 2 - scoreListItemTextWidth / 2, ((CANVAS_HEIGHT / 4) + 100) + ((i + 1) * 30));
             }
         }
 
         function gameOverHandler() {
-            gameAudio.pause(); // Stop the audio
+            if (!isMuted) {
+                gameAudio.pause();
+                soundIcon = '▶️';
+            }
             saveScore(score); // Save the score
 
             // Clear canvas and display game over message
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             ctx.fillStyle = 'black';
             ctx.font = '50px Rubik';
             const gameOverTextMetrics = ctx.measureText("GAME OVER");
             const gameOverTextWidth = gameOverTextMetrics.width;
-            ctx.fillText("GAME OVER", canvas.width / 2 - gameOverTextWidth / 2, canvas.height / 4);
+            ctx.fillText("GAME OVER", CANVAS_WIDTH / 2 - gameOverTextWidth / 2, CANVAS_HEIGHT / 4);
 
             // Display the player's score
             ctx.fillStyle = 'black';
             ctx.font = '30px Rubik';
             const scoreTextMetrics = ctx.measureText(`Score: ${score}`);
             const scoreTextWidth = scoreTextMetrics.width;
-            ctx.fillText(`Score: ${score}`, canvas.width / 2 - scoreTextWidth / 2, (canvas.height / 4) + 50);
+            ctx.fillText(`Score: ${score}`, CANVAS_WIDTH / 2 - scoreTextWidth / 2, (CANVAS_HEIGHT / 4) + 50);
 
             // Display top 10 scores
             displayTopTenScores();
@@ -453,7 +515,7 @@
             ctx.font = '20px Rubik';
             const playAgainTextMetrics = ctx.measureText("Play again!");
             const playAgainTextWidth = playAgainTextMetrics.width;
-            ctx.fillText("Play again", canvas.width / 2 - playAgainTextWidth / 2, canvas.height / 8);
+            ctx.fillText("Play again", CANVAS_WIDTH / 2 - playAgainTextWidth / 2, CANVAS_HEIGHT / 8);
 
         }
 
@@ -474,7 +536,7 @@
                 const y = clientY - rect.top;
 
                 // Check if the interaction occurred within the play again button bounds
-                if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height / 8 - 20 && y < canvas.height / 8) {
+                if (x > CANVAS_WIDTH / 2 - 50 && x < CANVAS_WIDTH / 2 + 50 && y > CANVAS_HEIGHT / 8 - 20 && y < CANVAS_HEIGHT / 8) {
                     resetGame();
                 }
             }
@@ -490,10 +552,10 @@
         function resetGame() {
             gameOver = false;
             player = {
-                x: (canvas.width / 2) - 10,
-                y: canvas.height - 70,
-                width: 20,
-                height: 20,
+                x: (CANVAS_WIDTH / 2) - 10,
+                y: playerStartY,
+                width: playerWidth,
+                height: playerHeight,
                 speed: 50, // horizonal max speed
                 velX: 0,
                 velY: 0,
@@ -502,8 +564,10 @@
             };
             platforms = [];
             platformCounter = 0;
-            isMuted = true;
-            soundIcon = '▶️';
+            if (!isMuted) {
+                gameAudio.play();
+                soundIcon = '⏸️';
+            }
             // isSpacebarPressedForAudio = false;
             heighestPlatformIndex = 9;
             score = 0;
@@ -513,7 +577,7 @@
                 let [tempWidth, tempX] = randomWidthAndX();
                 platforms.push({
                     x: tempX,
-                    y: canvas.height - (platformGap * i) - 50,
+                    y: CANVAS_HEIGHT - (platformGap * i) - 50,
                     width: tempWidth,
                     height: platformHeight,
                     number: platformCounter,
@@ -554,8 +618,10 @@
                 const platform = platforms[i];
                 const toi = calculateTOI(player, platform);
 
-                if (toi !== Infinity && toi >= 0 && toi <= 1) {
+                if (toi !== Infinity) {
                     collisionDetected = true;
+                    currentPlayerState = playerStates.idle;
+                    animationProgress = 0;
                     break; // Stop checking after the first collision is found
                 }
             }
@@ -567,11 +633,34 @@
         //------------------------------ 🔻 Loop variables 🔻 ------------------------------/
         let heighestPlatformIndex = 9; // The platform that needs to be generated - should be generated above the heighest platform
         let score = 0;
+        let gameFrame = 0;
         //------------------------------ 🔺 Loop variables 🔺 ------------------------------/
         //////////////////////////////////////////////////////////////////////////////////
         //------------------------------ 🔻 Game loop 🔻 ------------------------------/
         function updateGame() {
             if (!gameOver) {
+
+                // check if the player is moving to the sides
+                if (player.velX > 0.1) {
+                    player.movingToSide = true;
+                    if (!player.jumping) {
+                        currentPlayerState = playerStates.run;
+                        animationProgress = 0;
+                    }
+                } else if (player.velX < -0.1) {
+                    player.movingToSide = true;
+                    if (!player.jumping) {
+                        currentPlayerState = playerStates.run;
+                        animationProgress = 0;
+                    }
+                } else {
+                    player.movingToSide = false;
+                    if (!player.jumping) {
+                        currentPlayerState = playerStates.idle;
+                        animationProgress = 0;
+                    }
+                }
+
                 // Check key inputs
                 if (keys[39]) { // right arrow
                     if (player.velX < player.speed) {
@@ -601,7 +690,7 @@
                 }
 
                 // Screen scroll
-                if (player.y < canvas.height / 4) { // player jumped above 1/4 of the canvas
+                if (player.y < CANVAS_HEIGHT / 4) { // player jumped above 1/4 of the canvas
                     player.y += Math.abs(player.velY); // If player is jumping (velocity is negative), cancel the movement by adding absolute value velocity (add positive value)
 
                     // Go over all platforms and move them down. If needed, move to the top
@@ -616,14 +705,14 @@
                 }
 
                 // Collision with the canvas edges
-                if (player.x >= canvas.width - player.width) {
-                    player.x = canvas.width - player.width;
+                if (player.x >= CANVAS_WIDTH - player.width) {
+                    player.x = CANVAS_WIDTH - player.width;
                 } else if (player.x <= 0) {
                     player.x = 0;
                 }
 
-                if (player.y >= canvas.height - player.height) {
-                    player.y = canvas.height - player.height;
+                if (player.y >= CANVAS_HEIGHT - player.height) {
+                    player.y = CANVAS_HEIGHT - player.height;
                     player.jumping = false;
                     player.onPlatform = false;
                     player.velY = 0;
@@ -634,7 +723,7 @@
                 player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
                 platforms.forEach(function callback(platform, index) {
                     let toi = calculateTOI(player, platform); // Calculate time of impact with the current platform
-                    if (toi !== Infinity && toi >= 0 && toi <= 1 && player.velY > 0 && player.x + player.width > platform.x && player.x < platform.x + platform.width) {
+                    if (toi !== Infinity && player.velY > 0 && player.x + player.width > platform.x && player.x < platform.x + platform.width) {
                         player.jumping = false;
                         player.velY = 0;
                         player.y = platform.y - player.height;
@@ -686,7 +775,7 @@
                 });
 
                 // Clear canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
 
                 // Draw platforms
@@ -714,9 +803,15 @@
                     }
                 });
 
-                // Draw player
-                ctx.fillStyle = 'red';
-                ctx.fillRect(player.x, player.y, player.width, player.height);
+                // // Draw player
+                animationProgress = Math.floor(gameFrame / spriteAnimations[currentPlayerState].playerAnimationDelayer) % spriteAnimations[currentPlayerState].data.length;
+                ctx.drawImage(animationImage,
+                    spriteAnimations[currentPlayerState].data[animationProgress].x,
+                    spriteAnimations[currentPlayerState].data[animationProgress].y,
+                    spriteAnimations[currentPlayerState].data[animationProgress].width,
+                    spriteAnimations[currentPlayerState].data[animationProgress].height,
+                    player.x, player.y, player.width, player.height);
+
 
                 // Draw score
                 ctx.fillStyle = 'white';
@@ -725,8 +820,8 @@
 
                 drawSpeakerIcon();
 
-                // console.log(player.onPlatform);
 
+                gameFrame++;
                 requestAnimationFrame(updateGame); // Loop
             } else {
                 gameOverHandler();

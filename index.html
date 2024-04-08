@@ -33,12 +33,16 @@
         //----------------------------- 🔻 Constants 🔻 -----------------------------/
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+
+        // Graphics constants
         const animationImage = new Image();
         animationImage.src = 'MegaMan.png';
         const animationImageReversed = new Image();
         animationImageReversed.src = 'MegaManReversed.png';
         const platformsImage = new Image();
         platformsImage.src = 'platforms.png';
+
+        // Player sprite
         const playerStates = { idleRight: 0, jumpRight: 1, runRight: 2, fallRight: 3, idleLeft: 4, jumpLeft: 5, runLeft: 6, fallLeft: 7 };
         let currentPlayerState = playerStates.idleRight;
         const spriteAnimations = [
@@ -137,7 +141,28 @@
                 ]
             },
         ];
-        let animationProgress = 0;
+        let playerAnimationProgress = 0;
+
+        // Platforms sprite
+        /*
+            dimensions of a single platform:
+            4628
+            665
+
+            positions:
+            0: 21-30
+            791: 31-40
+            1577: 41-50
+            2355: 91-100
+            3164: 71-80
+            4020: 11-20
+            5094: 81-90
+            skip
+            7022: 0-10
+            skip
+            9032: 61-70
+            10033: 51-60
+        */
         const platformAnimation = [7022, 4020, 0, 791, 1577, 10033, 9032, 3164, 5094, 2355];
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
@@ -381,7 +406,7 @@
                 } else {
                     currentPlayerState = playerStates.jumpLeft;
                 }
-                animationProgress = 0;
+                playerAnimationProgress = 0;
                 // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
                 player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
                 if (!isSpacebarPressedForAudio) {
@@ -448,7 +473,7 @@
                 } else {
                     currentPlayerState = playerStates.jumpLeft;
                 }
-                animationProgress = 0;
+                playerAnimationProgress = 0;
                 player.velY = baseJump * 1.9 - Math.abs(player.velX) * 0.75;
                 isSwipeUpDetected = true;
             }
@@ -866,12 +891,12 @@
                 });
 
                 // // Draw player
-                animationProgress = Math.floor(gameFrame / spriteAnimations[currentPlayerState].playerAnimationDelayer) % spriteAnimations[currentPlayerState].data.length;
+                playerAnimationProgress = Math.floor(gameFrame / spriteAnimations[currentPlayerState].playerAnimationDelayer) % spriteAnimations[currentPlayerState].data.length;
                 ctx.drawImage(currentPlayerState < 4 ? animationImage : animationImageReversed,
-                    spriteAnimations[currentPlayerState].data[animationProgress].x,
-                    spriteAnimations[currentPlayerState].data[animationProgress].y,
-                    spriteAnimations[currentPlayerState].data[animationProgress].width,
-                    spriteAnimations[currentPlayerState].data[animationProgress].height,
+                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].x,
+                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].y,
+                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].width,
+                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].height,
                     player.x, player.y, player.width, player.height);
 
 

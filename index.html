@@ -37,11 +37,11 @@
         animationImage.src = 'MegaMan.png';
         const animationImageReversed = new Image();
         animationImageReversed.src = 'MegaManReversed.png';
-        const playerStates = { idle: 0, jump: 1, run: 2 };
-        let currentPlayerState = playerStates.idle;
+        const playerStates = { idleRight: 0, jumpRight: 1, runRight: 2, fallRight: 3, idleLeft: 4, jumpLeft: 5, runLeft: 6, fallLeft: 7 };
+        let currentPlayerState = playerStates.idleRight;
         const spriteAnimations = [
             {
-                name: 'idle',
+                name: 'idleRight',
                 playerAnimationDelayer: 20,
                 data: [
                     { x: 60 - (33 - 27), y: 353, width: 33, height: 34 },
@@ -52,8 +52,8 @@
                 ]
             },
             {
-                name: 'jump',
-                playerAnimationDelayer: 100,
+                name: 'jumpRight',
+                playerAnimationDelayer: 200,
                 data: [
                     // { x: 484 - (33 - 21), y: 428, width: 33, height: 38 },
                     { x: 517 - (33 - 32), y: 426, width: 33, height: 40 }
@@ -62,7 +62,7 @@
                 ]
             },
             {
-                name: 'run',
+                name: 'runRight',
                 playerAnimationDelayer: 13,
                 data: [
                     { x: 54, y: 426, width: 33, height: 35 },
@@ -77,7 +77,63 @@
                     { x: 429 - (33 - 29), y: 427, width: 33, height: 33 }
 
                 ]
-            }
+            },
+            {
+                name: 'fallRight',
+                playerAnimationDelayer: 200,
+                data: [
+                    // { x: 484 - (33 - 21), y: 428, width: 33, height: 38 },
+                    { x: 556 - (33 - 34), y: 431, width: 33, height: 38 }
+                    // { x: 556 - (33 - 34), y: 431, width: 33, height: 38 },
+                    // { x: 599 - (33 - 27), y: 433, width: 33, height: 33 }
+                ]
+            },
+            {
+                name: 'idleLeft',
+                playerAnimationDelayer: 20,
+                data: [
+                    { x: 915 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 880 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 845 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 809 - (33 - 27), y: 353, width: 33, height: 34 },
+                    { x: 775 - (33 - 27), y: 353, width: 33, height: 34 }
+                ]
+            },
+            {
+                name: 'jumpLeft',
+                playerAnimationDelayer: 200,
+                data: [
+                    { x: 453 - (33 - 32), y: 426, width: 33, height: 40 }
+                ]
+            },
+            {
+                name: 'runLeft',
+                playerAnimationDelayer: 13,
+                data: [
+                    { x: 915, y: 426, width: 33, height: 35 },
+                    { x: 880 - (33 - 25), y: 427, width: 33, height: 34 },
+
+                    { x: 853 - (33 - 17), y: 426, width: 33, height: 35 },
+
+                    { x: 805 - (33 - 26), y: 426, width: 33, height: 35 },
+                    { x: 755 - (33 - 29), y: 427, width: 33, height: 33 },
+                    { x: 703, y: 426, width: 33, height: 35 },
+                    { x: 670 - (33 - 25), y: 427, width: 33, height: 34 },
+
+                    { x: 643 - (33 - 17), y: 426, width: 33, height: 35 },
+
+                    { x: 591 - (33 - 26), y: 426, width: 33, height: 35 },
+                    { x: 548 - (33 - 29), y: 427, width: 33, height: 33 }
+
+                ]
+            },
+            {
+                name: 'fallLeft',
+                playerAnimationDelayer: 200,
+                data: [
+                    { x: 412 - (33 - 34), y: 431, width: 33, height: 38 }
+                ]
+            },
         ];
         let animationProgress = 0;
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
@@ -114,8 +170,8 @@
         //----------------------------- 🔺 Game settings 🔺 -----------------------------/
         //////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Player 🔻 -----------------------------/
-        const playerWidth = 30;
-        const playerHeight = 30;
+        const playerWidth = 35;
+        const playerHeight = 35;
         const playerStartY = CANVAS_HEIGHT - 100;
         let player = {
             x: (CANVAS_WIDTH / 2) - 10,
@@ -125,9 +181,10 @@
             speed: 50, // horizonal max speed
             velX: 0,
             velY: 0,
-            movingToSide: false,
             jumping: false,
-            onPlatform: true
+            onPlatform: true,
+            lastRunningDirection: 'right',
+            stuckOnSide: 1 // 0 = stuck, 1 = not stuck - preperation for future bug fix
         };
         //----------------------------- 🔺 Player 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////
@@ -314,7 +371,11 @@
             keys[e.keyCode] = true;
             if (e.keyCode == 32 && !player.jumping && player.onPlatform && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
-                currentPlayerState = playerStates.jump;
+                if (player.velX > 0) {
+                    currentPlayerState = playerStates.jumpRight;
+                } else {
+                    currentPlayerState = playerStates.jumpLeft;
+                }
                 animationProgress = 0;
                 // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
                 player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
@@ -377,7 +438,11 @@
             // Upward swipe detection
             if (!player.jumping && player.onPlatform && lastTouchY - touchMoveY > 10) { // 10 = minimum swipe distance
                 player.jumping = true;
-                currentPlayerState = playerStates.jump;
+                if (player.velX > 0) {
+                    currentPlayerState = playerStates.jumpRight;
+                } else {
+                    currentPlayerState = playerStates.jumpLeft;
+                }
                 animationProgress = 0;
                 player.velY = baseJump * 1.9 - Math.abs(player.velX) * 0.75;
                 isSwipeUpDetected = true;
@@ -620,8 +685,6 @@
 
                 if (toi !== Infinity) {
                     collisionDetected = true;
-                    currentPlayerState = playerStates.idle;
-                    animationProgress = 0;
                     break; // Stop checking after the first collision is found
                 }
             }
@@ -640,25 +703,18 @@
         function updateGame() {
             if (!gameOver) {
 
-                // check if the player is moving to the sides
-                if (player.velX > 0.1) {
-                    player.movingToSide = true;
-                    if (!player.jumping) {
-                        currentPlayerState = playerStates.run;
-                        animationProgress = 0;
-                    }
-                } else if (player.velX < -0.1) {
-                    player.movingToSide = true;
-                    if (!player.jumping) {
-                        currentPlayerState = playerStates.run;
-                        animationProgress = 0;
-                    }
+                if (player.jumping && player.velY < 0) {
+                    currentPlayerState = player.velX > 0 ? playerStates.jumpRight : playerStates.jumpLeft;
+                } else if (player.velY > 0) {
+                    currentPlayerState = player.velX > 0 ? playerStates.fallRight : playerStates.fallLeft;
+                } else if (player.velX > 0.2) {
+                    currentPlayerState = playerStates.runRight;
+                    player.lastRunningDirection = 'right';
+                } else if (player.velX < -0.2) {
+                    currentPlayerState = playerStates.runLeft;
+                    player.lastRunningDirection = 'left';
                 } else {
-                    player.movingToSide = false;
-                    if (!player.jumping) {
-                        currentPlayerState = playerStates.idle;
-                        animationProgress = 0;
-                    }
+                    currentPlayerState = player.lastRunningDirection === 'right' ? playerStates.idleRight : playerStates.idleLeft;
                 }
 
                 // Check key inputs
@@ -805,7 +861,7 @@
 
                 // // Draw player
                 animationProgress = Math.floor(gameFrame / spriteAnimations[currentPlayerState].playerAnimationDelayer) % spriteAnimations[currentPlayerState].data.length;
-                ctx.drawImage(animationImage,
+                ctx.drawImage(currentPlayerState < 4 ? animationImage : animationImageReversed,
                     spriteAnimations[currentPlayerState].data[animationProgress].x,
                     spriteAnimations[currentPlayerState].data[animationProgress].y,
                     spriteAnimations[currentPlayerState].data[animationProgress].width,

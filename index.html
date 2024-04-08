@@ -37,6 +37,8 @@
         animationImage.src = 'MegaMan.png';
         const animationImageReversed = new Image();
         animationImageReversed.src = 'MegaManReversed.png';
+        const platformsImage = new Image();
+        platformsImage.src = 'platforms.png';
         const playerStates = { idleRight: 0, jumpRight: 1, runRight: 2, fallRight: 3, idleLeft: 4, jumpLeft: 5, runLeft: 6, fallLeft: 7 };
         let currentPlayerState = playerStates.idleRight;
         const spriteAnimations = [
@@ -136,6 +138,7 @@
             },
         ];
         let animationProgress = 0;
+        const platformAnimation = [7022, 4020, 0, 791, 1577, 10033, 9032, 3164, 5094, 2355];
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Resize canvas for mobile 🔻 -----------------------------/
@@ -231,7 +234,7 @@
         //----------------------------- 🔻 Platforms 🔻 -----------------------------/
         let platforms = [];
         let platformCounter = 0;
-        const platformHeight = 10;
+        const platformHeight = 20;
 
         const initialPlatformWidthRange = [200, 350];
         const widthRangeBottomValueDecreaseStep = 10; // The amount by which the range decreases
@@ -310,7 +313,8 @@
                 number: platformCounter,
                 playerStandTime: 0, // time in milliseconds the player has been on the platform
                 falling: false, // indicates whether the platform is falling
-                fallSpeed: 0 // speed at which the platform falls
+                fallSpeed: 0, // speed at which the platform falls
+                xToDrawFromInSprite: Math.random() * (4628 - tempWidth)
             });
 
             chooseIfEnemyOnPlatform(platforms[i]);
@@ -331,6 +335,7 @@
                 platform.playerStandTime = 0;
                 platform.falling = false;
                 platform.fallSpeed = 0;
+                platform.xToDrawFromInSprite = Math.random() * (4628 - tempWidth);
 
                 chooseIfEnemyOnPlatform(platform);
                 chooseIfVerticalMovingPlatform(platform);
@@ -648,7 +653,8 @@
                     number: platformCounter,
                     playerStandTime: 0, // time in milliseconds the player has been on the platform
                     falling: false, // indicates whether the platform is falling
-                    fallSpeed: 0 // speed at which the platform falls
+                    fallSpeed: 0, // speed at which the platform falls
+                    xToDrawFromInSprite: Math.random() * (4628 - tempWidth)
                 });
                 if (Math.random() < 0.05 && platformCounter % 10 != 0) {
                     const enemyType = Math.random() < 0.5 ? 1 : 2;
@@ -836,18 +842,18 @@
 
                 // Draw platforms
                 platforms.forEach(function callback(platform, index) {
+                    ctx.drawImage(platformsImage, platform.xToDrawFromInSprite, platformAnimation[Math.floor(platform.number / 10)], platform.width, 665, platform.x, platform.y, platform.width, platform.height);
                     if (platform.number % 10 == 0) {
-                        ctx.fillStyle = 'green';
-                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height + 5);
-                        // draw platforms number inside it
-                        ctx.fillStyle = 'black';
-                        ctx.font = '16px Rubik';
+                        // Draw a white rectangle to be the background of the number
                         const metrics = ctx.measureText(platform.number);
                         const textWidth = metrics.width;
-                        ctx.fillText(platform.number, platform.x + platform.width / 2 - textWidth / 2, platform.y + platform.height / 2 + 7.5);
-                    } else {
+                        const marginBetweenTextAndRectangle = 2;
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(platform.x + platform.width / 2 - textWidth / 2 - marginBetweenTextAndRectangle, platform.y + platform.height / 2 - 10, textWidth + marginBetweenTextAndRectangle * 2, 20);
+                        // Draw the number
                         ctx.fillStyle = 'black';
-                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                        ctx.font = '19px Rubik';
+                        ctx.fillText(platform.number, platform.x + platform.width / 2 - textWidth / 2, platform.y + platform.height / 2 + 7);
                     }
                 });
 

@@ -413,6 +413,9 @@
                 // Adjust initial Y position
                 let offset = platform.maxVerticalMovement / 2;
                 platform.y += platform.movingUp ? offset : -offset;
+                if (platform.enemy) {
+                    platform.enemy.y += platform.movingUp ? offset : -offset;
+                }
             }
         }
 
@@ -971,7 +974,7 @@
 
                 // Draw platforms
                 platforms.forEach(function callback(platform, index) {
-                    ctx.drawImage(platformsImage, platform.xToDrawFromInSprite, platformAnimation[Math.floor(platform.number / 10)], platform.width, 665, platform.x, platform.y, platform.width, platform.height);
+                    ctx.drawImage(platformsImage, platform.xToDrawFromInSprite, platformAnimation[Math.floor(platform.number / 10) % 10], platform.width, 665, platform.x, platform.y, platform.width, platform.height);
                     if (platform.number % 10 == 0) {
                         // Draw a white rectangle to be the background of the number
                         const metrics = ctx.measureText(platform.number);

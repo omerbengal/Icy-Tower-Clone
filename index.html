@@ -930,7 +930,7 @@
                         if (platform.falling === false && platform.number % 10 != 0) {
                             platform.playerStandTime += 1; // Increment platform's stand time
 
-                            if (platform.playerStandTime > 240) {
+                            if (platform.playerStandTime > 120) {
                                 platform.falling = true;
                                 platform.isMoving = false;
                             }

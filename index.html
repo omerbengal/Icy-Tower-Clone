@@ -402,10 +402,17 @@
         function chooseIfVerticalMovingPlatform(platform) {
             if (Math.random() < verticalMovingPlatformRatio && platformCounter % 10 != 0) { // Approximately 6% chance
                 platform.verticalMoving = true;
-                platform.verticalSpeed = 0.15; // Speed of vertical movement
-                platform.maxVerticalMovement = 50; // Maximum distance the platform moves vertically
+                platform.verticalSpeed = 0.25; // Speed of vertical movement
+                platform.maxVerticalMovement = 75; // Maximum distance the platform moves vertically
                 platform.currentVerticalMovement = 0; // Current distance moved
                 platform.movingUp = Math.random() < 0.5; // Randomly decide initial direction
+
+                // Ensure the sine wave starts from its mid-point (sin(π / 2) = 1)
+                platform.currentVerticalMovement = Math.PI / 2;
+
+                // Adjust initial Y position
+                let offset = platform.maxVerticalMovement / 2;
+                platform.y += platform.movingUp ? offset : -offset;
             }
         }
 
@@ -453,15 +460,30 @@
 
         function updateVerticalMovement(platform) {
             if (platform.verticalMoving) {
-                platform.currentVerticalMovement += 0.075; // lower = larger distance
+                platform.currentVerticalMovement += 0.025; // lower = larger distance
 
                 // Use sine wave for smooth easing transition
                 let sineWave = Math.sin(platform.currentVerticalMovement * platform.verticalSpeed);
-                platform.y += sineWave * platform.verticalSpeed;
+
+                // Check if platform is moving up or down
+                if (platform.movingUp) {
+                    platform.y -= sineWave * platform.verticalSpeed; // subtract for moving up
+                } else {
+                    platform.y += sineWave * platform.verticalSpeed; // add for moving down
+                }
 
                 // Move enemy if exists
                 if (platform.enemy) {
-                    platform.enemy.y += sineWave * platform.verticalSpeed;
+                    if (platform.movingUp) {
+                        platform.enemy.y -= sineWave * platform.verticalSpeed; // subtract for moving up
+                    } else {
+                        platform.enemy.y += sineWave * platform.verticalSpeed; // add for moving down
+                    }
+                }
+
+                // Check if platform has reached its maximum vertical movement
+                if (platform.currentVerticalMovement >= platform.maxVerticalMovement) {
+                    platform.currentVerticalMovement = 0; // reset current vertical movement
                 }
             }
         }

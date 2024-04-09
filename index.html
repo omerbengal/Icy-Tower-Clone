@@ -41,6 +41,10 @@
         animationImageReversed.src = 'MegaManReversed.png';
         const platformsImage = new Image();
         platformsImage.src = 'platforms.png';
+        const enemiesImage = new Image();
+        enemiesImage.src = 'enemies.png';
+        const enemiesImageReversed = new Image();
+        enemiesImageReversed.src = 'enemiesReversed.png';
 
         // Player sprite
         const playerStates = { idleRight: 0, jumpRight: 1, runRight: 2, fallRight: 3, idleLeft: 4, jumpLeft: 5, runLeft: 6, fallLeft: 7 };
@@ -164,6 +168,43 @@
             10033: 51-60
         */
         const platformAnimation = [7022, 4020, 0, 791, 1577, 10033, 9032, 3164, 5094, 2355];
+
+        // Enemies sprite
+        const enemyAnimation = [
+            {
+                enemyType: 1,
+                enemyAnimationDelayer: 25,
+                data: [
+                    { x: 310, y: 15, width: 19, height: 19 },
+                    { x: 290, y: 15, width: 18, height: 19 },
+                    { x: 267 - (18 - 21), y: 15, width: 18, height: 19 },
+                    { x: 247, y: 15, width: 18, height: 19 },
+                    { x: 227, y: 16, width: 18, height: 18 },
+                    { x: 207, y: 13, width: 18, height: 21 },
+                    { x: 187, y: 19, width: 18, height: 15 },
+                    { x: 167, y: 23, width: 18, height: 11 },
+                    { x: 167, y: 23, width: 18, height: 11 },
+                    { x: 167, y: 23, width: 18, height: 11 },
+                    { x: 167, y: 23, width: 18, height: 11 },
+                    { x: 167, y: 23, width: 18, height: 11 }
+                ]
+            },
+            {
+                enemyType: 2,
+                enemyAnimationDelayer: 10,
+                data: [
+                    { x: 143, y: 87, width: 18, height: 18 },
+                    { x: 123, y: 86, width: 18, height: 19 },
+                    { x: 103, y: 85, width: 18, height: 20 },
+                    { x: 83, y: 86, width: 18, height: 19 },
+                    { x: 63, y: 87, width: 18, height: 18 },
+                    { x: 43, y: 86, width: 18, height: 19 },
+                    { x: 23, y: 85, width: 18, height: 20 },
+                    { x: 3, y: 86, width: 18, height: 19 }
+                ]
+            }
+        ];
+        let enemyAnimationProgress = 0;
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Resize canvas for mobile 🔻 -----------------------------/
@@ -217,20 +258,21 @@
         //----------------------------- 🔺 Player 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Enemies 🔻 -----------------------------/
-        const enemyWidth = 20;
-        const enemyHeight = 20;
+        const enemyWidth = 25;
+        const enemyHeight = 25;
+        const enemyMarginFromSides = 10;
         function createEnemy(type, platform) {
             // calculate random x position for the enemy - but make sure it's within the canvas
-            let randomEnemyX = platform.x + Math.random() * (platform.width - 20);
+            let randomEnemyX = platform.x + Math.random() * (platform.width - enemyWidth);
             if (randomEnemyX < 0) {
-                randomEnemyX = 10; // margin from the left
-            } else if (randomEnemyX + 20 > CANVAS_WIDTH) {
-                randomEnemyX = CANVAS_WIDTH - 30; // margin from the right
+                randomEnemyX = enemyMarginFromSides; // margin from the left
+            } else if (randomEnemyX + enemyWidth > CANVAS_WIDTH) {
+                randomEnemyX = CANVAS_WIDTH - (enemyWidth + enemyMarginFromSides); // margin from the right
             }
             return {
                 type,
                 x: randomEnemyX, // Random starting position on the platform
-                y: platform.y - 20, // Positioned above the platform
+                y: platform.y - enemyHeight, // Positioned above the platform
                 width: enemyWidth,
                 height: enemyHeight,
                 speed: type === 2 ? 1 : 0, // Type 2 enemies move
@@ -882,11 +924,16 @@
                     }
                 });
 
-                // Draw enemies
+                // Draw enemies animations
                 platforms.forEach(platform => {
                     if (platform.enemy) {
-                        ctx.fillStyle = platform.enemy.type === 1 ? 'blue' : 'orange';
-                        ctx.fillRect(platform.enemy.x, platform.enemy.y, platform.enemy.width, platform.enemy.height);
+                        enemyAnimationProgress = Math.floor(gameFrame / enemyAnimation[platform.enemy.type - 1].enemyAnimationDelayer) % enemyAnimation[platform.enemy.type - 1].data.length;
+                        ctx.drawImage(enemiesImage,
+                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].x,
+                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].y,
+                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].width,
+                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].height,
+                            platform.enemy.x, platform.enemy.y, platform.enemy.width, platform.enemy.height);
                     }
                 });
 

@@ -169,40 +169,79 @@
         */
         const platformAnimation = [7022, 4020, 0, 791, 1577, 10033, 9032, 3164, 5094, 2355];
 
+        //Math.floor(gameFrame / enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].enemyAnimationDelayer) % enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data.length;
         // Enemies sprite
         const enemyAnimation = [
-            {
-                enemyType: 1,
-                enemyAnimationDelayer: 25,
-                data: [
-                    { x: 310, y: 15, width: 19, height: 19 },
-                    { x: 290, y: 15, width: 18, height: 19 },
-                    { x: 267 - (18 - 21), y: 15, width: 18, height: 19 },
-                    { x: 247, y: 15, width: 18, height: 19 },
-                    { x: 227, y: 16, width: 18, height: 18 },
-                    { x: 207, y: 13, width: 18, height: 21 },
-                    { x: 187, y: 19, width: 18, height: 15 },
-                    { x: 167, y: 23, width: 18, height: 11 },
-                    { x: 167, y: 23, width: 18, height: 11 },
-                    { x: 167, y: 23, width: 18, height: 11 },
-                    { x: 167, y: 23, width: 18, height: 11 },
-                    { x: 167, y: 23, width: 18, height: 11 }
-                ]
-            },
-            {
-                enemyType: 2,
-                enemyAnimationDelayer: 10,
-                data: [
-                    { x: 143, y: 87, width: 18, height: 18 },
-                    { x: 123, y: 86, width: 18, height: 19 },
-                    { x: 103, y: 85, width: 18, height: 20 },
-                    { x: 83, y: 86, width: 18, height: 19 },
-                    { x: 63, y: 87, width: 18, height: 18 },
-                    { x: 43, y: 86, width: 18, height: 19 },
-                    { x: 23, y: 85, width: 18, height: 20 },
-                    { x: 3, y: 86, width: 18, height: 19 }
-                ]
-            }
+            [ // enemy type 1
+                {
+                    enemyType: 1,
+                    enemyAnimationDelayer: 20,
+                    data: [
+                        { x: 310, y: 15, width: 19, height: 19 },
+                        { x: 290, y: 15, width: 18, height: 19 },
+                        { x: 267 - (18 - 21), y: 15, width: 18, height: 19 },
+                        { x: 247, y: 15, width: 18, height: 19 },
+                        { x: 227, y: 16, width: 18, height: 18 },
+                        { x: 207, y: 13, width: 18, height: 21 },
+                        { x: 187, y: 19, width: 18, height: 15 },
+                        { x: 167, y: 23, width: 18, height: 11 },
+                        { x: 167, y: 23, width: 18, height: 11 },
+                        { x: 167, y: 23, width: 18, height: 11 },
+                        { x: 167, y: 23, width: 18, height: 11 },
+                        { x: 167, y: 23, width: 18, height: 11 }
+                    ]
+                },
+                {},
+                {
+                    enemyType: 1,
+                    enemyAnimationDelayer: 20,
+                    data: [
+                        { x: 2, y: 15, width: 19, height: 19 },
+                        { x: 23, y: 15, width: 18, height: 19 },
+                        { x: 40 - (18 - 21), y: 15, width: 18, height: 19 },
+                        { x: 66, y: 15, width: 18, height: 19 },
+                        { x: 86, y: 16, width: 18, height: 18 },
+                        { x: 106, y: 13, width: 18, height: 21 },
+                        { x: 126, y: 19, width: 18, height: 15 },
+                        { x: 146, y: 23, width: 18, height: 11 },
+                        { x: 146, y: 23, width: 18, height: 11 },
+                        { x: 146, y: 23, width: 18, height: 11 },
+                        { x: 146, y: 23, width: 18, height: 11 },
+                        { x: 146, y: 23, width: 18, height: 11 }
+                    ]
+                }
+            ],
+            [ // enemy type 2
+                {
+                    enemyType: 2,
+                    enemyAnimationDelayer: 10,
+                    data: [
+                        { x: 143, y: 87, width: 18, height: 18 },
+                        { x: 123, y: 86, width: 18, height: 19 },
+                        { x: 103, y: 85, width: 18, height: 20 },
+                        { x: 83, y: 86, width: 18, height: 19 },
+                        { x: 63, y: 87, width: 18, height: 18 },
+                        { x: 43, y: 86, width: 18, height: 19 },
+                        { x: 23, y: 85, width: 18, height: 20 },
+                        { x: 3, y: 86, width: 18, height: 19 }
+                    ]
+                },
+                {},
+                {
+                    enemyType: 2,
+                    enemyAnimationDelayer: 10,
+                    data: [
+                        { x: 170, y: 87, width: 18, height: 18 },
+                        { x: 190, y: 86, width: 18, height: 19 },
+                        { x: 210, y: 85, width: 18, height: 20 },
+                        { x: 230, y: 86, width: 18, height: 19 },
+                        { x: 250, y: 87, width: 18, height: 18 },
+                        { x: 270, y: 86, width: 18, height: 19 },
+                        { x: 290, y: 85, width: 18, height: 20 },
+                        { x: 310, y: 86, width: 18, height: 19 }
+                    ]
+                }
+            ]
         ];
         let enemyAnimationProgress = 0;
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
@@ -276,13 +315,14 @@
                 width: enemyWidth,
                 height: enemyHeight,
                 speed: type === 2 ? 1 : 0, // Type 2 enemies move
-                direction: 1 // Direction for moving enemies
+                direction: Math.random() < 0.5 ? 1 : -1 // Direction for moving enemies: 1 = left, -1 = right
             };
         }
 
         function updateEnemyPosition(enemy, platform) {
             if (enemy.type === 2) {
-                enemy.x += enemy.speed * enemy.direction;
+                enemy.x -= enemy.speed * enemy.direction; // it was += but then the direction (1 and -1) and the enemy sprite to use was not matching
+
                 // Change direction if enemy reaches the edge of the platform
                 if (enemy.x <= Math.max(platform.x, 0) || enemy.x + enemy.width >= Math.min(platform.x + platform.width, CANVAS_WIDTH)) {
                     enemy.direction *= -1;
@@ -927,12 +967,12 @@
                 // Draw enemies animations
                 platforms.forEach(platform => {
                     if (platform.enemy) {
-                        enemyAnimationProgress = Math.floor(gameFrame / enemyAnimation[platform.enemy.type - 1].enemyAnimationDelayer) % enemyAnimation[platform.enemy.type - 1].data.length;
-                        ctx.drawImage(enemiesImage,
-                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].x,
-                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].y,
-                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].width,
-                            enemyAnimation[platform.enemy.type - 1].data[enemyAnimationProgress].height,
+                        enemyAnimationProgress = Math.floor(gameFrame / enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].enemyAnimationDelayer) % enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data.length;
+                        ctx.drawImage(platform.enemy.direction === 1 ? enemiesImage : enemiesImageReversed,
+                            enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data[enemyAnimationProgress].x,
+                            enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data[enemyAnimationProgress].y,
+                            enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data[enemyAnimationProgress].width,
+                            enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data[enemyAnimationProgress].height,
                             platform.enemy.x, platform.enemy.y, platform.enemy.width, platform.enemy.height);
                     }
                 });

@@ -35,21 +35,27 @@
         const ctx = canvas.getContext('2d');
 
         // Graphics constants
-        const animationImage = new Image();
-        animationImage.src = 'MegaMan.png';
-        const animationImageReversed = new Image();
-        animationImageReversed.src = 'MegaManReversed.png';
+        const playerImage = new Image();
+        playerImage.src = 'MegaMan.png';
+        const playerImageReversed = new Image();
+        playerImageReversed.src = 'MegaManReversed.png';
+        const playerImageYellow = new Image();
+        playerImageYellow.src = 'MegaManYellow.png';
+        const playerImageReversedYellow = new Image();
+        playerImageReversedYellow.src = 'MegaManReversedYellow.png';
         const platformsImage = new Image();
         platformsImage.src = 'platforms.png';
         const enemiesImage = new Image();
         enemiesImage.src = 'enemies.png';
         const enemiesImageReversed = new Image();
         enemiesImageReversed.src = 'enemiesReversed.png';
+        const starImage = new Image();
+        starImage.src = 'star.png';
 
         // Player sprite
         const playerStates = { idleRight: 0, jumpRight: 1, runRight: 2, fallRight: 3, idleLeft: 4, jumpLeft: 5, runLeft: 6, fallLeft: 7 };
         let currentPlayerState = playerStates.idleRight;
-        const spriteAnimations = [
+        const playerAnimations = [
             {
                 name: 'idleRight',
                 playerAnimationDelayer: 20,
@@ -244,6 +250,21 @@
             ]
         ];
         let enemyAnimationProgress = 0;
+
+        // Star sprite
+        const starAnimation = {
+            playerAnimationDelayer: 20,
+            data: [
+                { x: 101, y: 10, width: 24, height: 27 },
+                { x: 129, y: 10, width: 19, height: 27 },
+                { x: 160 - ((24 - 7) / 2), y: 10, width: 24, height: 27 },
+                { x: 178, y: 10, width: 19, height: 27 },
+                { x: 101, y: 60, width: 24, height: 27 },
+                { x: 129, y: 60, width: 19, height: 27 },
+                { x: 159 - ((24 - 7) / 2), y: 60, width: 24, height: 27 },
+                { x: 178, y: 60, width: 19, height: 27 }
+            ]
+        };
         //----------------------------- 🔺 Constants 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Resize canvas for mobile 🔻 -----------------------------/
@@ -292,7 +313,8 @@
             jumping: false,
             onPlatform: true,
             lastRunningDirection: 'right',
-            stuckOnSide: 1 // 0 = stuck, 1 = not stuck - preperation for future bug fix
+            stuckOnSide: 1, // 0 = stuck, 1 = not stuck - preperation for future bug fix
+            power: false
         };
         //----------------------------- 🔺 Player 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////
@@ -330,14 +352,68 @@
             }
         }
 
-        function checkPlayerEnemyCollision(player, enemy) {
+        function checkPlayerEnemyCollision(enemy) {
             return player.x < enemy.x + enemy.width &&
                 player.x + player.width > enemy.x &&
                 player.y < enemy.y + enemy.height &&
-                player.y + player.height > enemy.y;
+                player.y + player.height > enemy.y &&
+                player.power === false;
         }
         //----------------------------- 🔺 Enemies 🔺 -----------------------------/
-        ////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //----------------------------- 🔻 Star 🔻 -----------------------------/
+        const starWidth = 25;
+        const starHeight = 25;
+        const starMarginFromSides = 10;
+        let powerTimer = null; // Timer for the power-up duration
+        function createStar(platform) {
+            // calculate random x position for the star - but make sure it's within the canvas
+            let randomStarX = platform.x + Math.random() * (platform.width - starWidth);
+            if (randomStarX < 0) {
+                randomStarX = starMarginFromSides; // margin from the left
+            } else if (randomStarX + starWidth > CANVAS_WIDTH) {
+                randomStarX = CANVAS_WIDTH - (starWidth + starMarginFromSides); // margin from the right
+            }
+
+            return {
+                x: randomStarX, // Random starting position on the platform
+                y: platform.y - starHeight, // Positioned above the platform
+                width: starWidth,
+                height: starHeight,
+                starAnimationProgress: 0
+            };
+        }
+        function checkPlayerStarCollision(star) {
+            return player.x < star.x + star.width &&
+                player.x + player.width > star.x &&
+                player.y < star.y + star.height &&
+                player.y + player.height > star.y;
+        }
+
+        function collectStar() {
+            // If there's an existing power timer, clear it
+            if (powerTimer) {
+                clearTimeout(powerTimer);
+            }
+
+            // Give power to the player
+            givePowerToPlayer();
+
+            // Set a new timer for 8 seconds
+            powerTimer = setTimeout(removePowerFromPlayer, 8000);
+        }
+
+        function givePowerToPlayer() {
+            player.power = true;
+        }
+
+        function removePowerFromPlayer() {
+            player.power = false;
+            powerTimer = null;
+        }
+
+        //----------------------------- 🔺 Star 🔺 -----------------------------/
+        ///////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Platforms 🔻 -----------------------------/
         let platforms = [];
         let platformCounter = 0;
@@ -357,8 +433,9 @@
         let platformGap = initialPlatformGap;
 
 
-        let enemyOnPlatformRatio = 0.05; // 5% chance of enemy on platform
-        let verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
+        const enemyOnPlatformRatio = 0.5; // 5% chance of enemy on platform
+        const verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
+        const starOnPlatformRatio = 0.5; // 5% chance of star on platform
 
         // Generate random width for the platform
         function randomWidth() {
@@ -419,6 +496,12 @@
             }
         }
 
+        function chooseIfStarOnPlatform(platform) {
+            if (Math.random() < starOnPlatformRatio && platformCounter % 10 != 0 && !platform.enemy) {
+                platform.star = createStar(platform);
+            }
+        }
+
         // Generate the 10 platforms
         for (let i = 0; i < 10; i++) {
             let [tempWidth, tempX] = randomWidthAndX();
@@ -436,6 +519,7 @@
 
             chooseIfEnemyOnPlatform(platforms[i]);
             chooseIfVerticalMovingPlatform(platforms[i]);
+            chooseIfStarOnPlatform(platforms[i]);
 
             platformCounter++;
         }
@@ -456,6 +540,7 @@
 
                 chooseIfEnemyOnPlatform(platform);
                 chooseIfVerticalMovingPlatform(platform);
+                chooseIfStarOnPlatform(platform);
 
                 platformCounter++;
             }
@@ -481,6 +566,14 @@
                         platform.enemy.y -= sineWave * platform.verticalSpeed; // subtract for moving up
                     } else {
                         platform.enemy.y += sineWave * platform.verticalSpeed; // add for moving down
+                    }
+                }
+
+                if (platform.star) {
+                    if (platform.movingUp) {
+                        platform.star.y -= sineWave * platform.verticalSpeed; // subtract for moving up
+                    } else {
+                        platform.star.y += sineWave * platform.verticalSpeed; // add for moving down
                     }
                 }
 
@@ -799,7 +892,7 @@
         //----------------------------- 🔺 Reset game 🔺 -----------------------------/
         //////////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Collision detection 🔻 -----------------------------/
-        function calculateTOI(player, platform) {
+        function calculateTOI(platform) {
             if (player.velY <= 0) return Infinity; // Ignore if moving upwards or stationary
 
             let effectivePlatformY = platform.y;
@@ -818,12 +911,12 @@
         }
 
         // Collision detection and handling function
-        function platformYCollision(player, platforms) {
+        function platformYCollision(platforms) {
             let collisionDetected = false;
 
             for (let i = 0; i < platforms.length; i++) {
                 const platform = platforms[i];
-                const toi = calculateTOI(player, platform);
+                const toi = calculateTOI(platform);
 
                 if (toi !== Infinity) {
                     collisionDetected = true;
@@ -881,7 +974,7 @@
                 player.x += player.velX;
                 player.y += player.velY;
 
-                const hasCollided = platformYCollision(player, platforms);
+                const hasCollided = platformYCollision(platforms);
 
                 if (!hasCollided) {
                     player.velY += gravity; // Apply gravity if no collision
@@ -897,6 +990,9 @@
                         // if platform has enemy - move the enemy down
                         if (platform.enemy) {
                             platform.enemy.y += Math.abs(player.velY);
+                        }
+                        if (platform.star) {
+                            platform.star.y += Math.abs(player.velY);
                         }
                         repositionPlatform(platform, index);
                     });
@@ -920,7 +1016,7 @@
                 // Platform collision
                 player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
                 platforms.forEach(function callback(platform, index) {
-                    let toi = calculateTOI(player, platform); // Calculate time of impact with the current platform
+                    let toi = calculateTOI(platform); // Calculate time of impact with the current platform
                     if (toi !== Infinity && player.velY > 0 && player.x + player.width > platform.x && player.x < platform.x + platform.width) {
                         player.jumping = false;
                         player.velY = 0;
@@ -948,8 +1044,18 @@
                 platforms.forEach(platform => {
                     if (platform.enemy) {
                         updateEnemyPosition(platform.enemy, platform);
-                        if (checkPlayerEnemyCollision(player, platform.enemy)) {
+                        if (checkPlayerEnemyCollision(platform.enemy)) {
                             gameOver = true;
+                        }
+                    }
+                });
+
+                // Check for player-star collisions
+                platforms.forEach(platform => {
+                    if (platform.star) {
+                        if (checkPlayerStarCollision(platform.star)) {
+                            platform.star = null;
+                            collectStar();
                         }
                     }
                 });
@@ -962,6 +1068,9 @@
                         // if the platform has enemy - move the enemy down
                         if (platform.enemy) {
                             platform.enemy.y += platform.fallSpeed;
+                        }
+                        if (platform.star) {
+                            platform.star.y += platform.fallSpeed;
                         }
                     }
                     repositionPlatform(platform, index);
@@ -991,10 +1100,8 @@
                         ctx.font = '19px Rubik';
                         ctx.fillText(platform.number, platform.x + platform.width / 2 - textWidth / 2, platform.y + platform.height / 2 + 7);
                     }
-                });
 
-                // Draw enemies animations
-                platforms.forEach(platform => {
+                    // Draw enemy if exists
                     if (platform.enemy) {
                         enemyAnimationProgress = Math.floor(gameFrame / enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].enemyAnimationDelayer) % enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data.length;
                         ctx.drawImage(platform.enemy.direction === 1 ? enemiesImage : enemiesImageReversed,
@@ -1004,15 +1111,32 @@
                             enemyAnimation[platform.enemy.type - 1][1 - platform.enemy.direction].data[enemyAnimationProgress].height,
                             platform.enemy.x, platform.enemy.y, platform.enemy.width, platform.enemy.height);
                     }
+
+                    // Draw star if exists
+                    if (platform.star) {
+                        platform.star.starAnimationProgress = Math.floor(gameFrame / starAnimation.playerAnimationDelayer) % starAnimation.data.length;
+                        ctx.drawImage(starImage,
+                            starAnimation.data[platform.star.starAnimationProgress].x,
+                            starAnimation.data[platform.star.starAnimationProgress].y,
+                            starAnimation.data[platform.star.starAnimationProgress].width,
+                            starAnimation.data[platform.star.starAnimationProgress].height,
+                            platform.star.x, platform.star.y, platform.star.width, platform.star.height);
+                    }
                 });
 
                 // // Draw player
-                playerAnimationProgress = Math.floor(gameFrame / spriteAnimations[currentPlayerState].playerAnimationDelayer) % spriteAnimations[currentPlayerState].data.length;
-                ctx.drawImage(currentPlayerState < 4 ? animationImage : animationImageReversed,
-                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].x,
-                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].y,
-                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].width,
-                    spriteAnimations[currentPlayerState].data[playerAnimationProgress].height,
+                let finalPlayerImage = null;
+                if (player.power) {
+                    finalPlayerImage = currentPlayerState < 4 ? playerImageYellow : playerImageReversedYellow;
+                } else {
+                    finalPlayerImage = currentPlayerState < 4 ? playerImage : playerImageReversed;
+                }
+                playerAnimationProgress = Math.floor(gameFrame / playerAnimations[currentPlayerState].playerAnimationDelayer) % playerAnimations[currentPlayerState].data.length;
+                ctx.drawImage(finalPlayerImage,
+                    playerAnimations[currentPlayerState].data[playerAnimationProgress].x,
+                    playerAnimations[currentPlayerState].data[playerAnimationProgress].y,
+                    playerAnimations[currentPlayerState].data[playerAnimationProgress].width,
+                    playerAnimations[currentPlayerState].data[playerAnimationProgress].height,
                     player.x, player.y, player.width, player.height);
 
 

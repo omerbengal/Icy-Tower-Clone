@@ -366,6 +366,7 @@
         const starHeight = 25;
         const starMarginFromSides = 10;
         let powerTimer = null; // Timer for the power-up duration
+        let starPowerTimeLeft = null; // Time left for the power-up
         function createStar(platform) {
             // calculate random x position for the star - but make sure it's within the canvas
             let randomStarX = platform.x + Math.random() * (platform.width - starWidth);
@@ -405,11 +406,13 @@
 
         function givePowerToPlayer() {
             player.power = true;
+            starPowerTimeLeft = new Date().getTime() + 8000; // 8 seconds
         }
 
         function removePowerFromPlayer() {
             player.power = false;
             powerTimer = null;
+            starPowerTimeLeft = null;
         }
 
         //----------------------------- 🔺 Star 🔺 -----------------------------/
@@ -433,9 +436,9 @@
         let platformGap = initialPlatformGap;
 
 
-        const enemyOnPlatformRatio = 0.5; // 5% chance of enemy on platform
+        const enemyOnPlatformRatio = 0.05; // 5% chance of enemy on platform
         const verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
-        const starOnPlatformRatio = 0.5; // 5% chance of star on platform
+        const starOnPlatformRatio = 0.05; // 5% chance of star on platform
 
         // Generate random width for the platform
         function randomWidth() {
@@ -477,7 +480,7 @@
         }
 
         function chooseIfVerticalMovingPlatform(platform) {
-            if (Math.random() < verticalMovingPlatformRatio && platformCounter % 10 != 0) { // Approximately 6% chance
+            if (Math.random() < verticalMovingPlatformRatio && platformCounter % 10 != 0 && !platforms[platformCounter - 1].verticalMoving) {
                 platform.verticalMoving = true;
                 platform.verticalSpeed = 0.25; // Speed of vertical movement
                 platform.maxVerticalMovement = 75; // Maximum distance the platform moves vertically
@@ -1142,8 +1145,15 @@
 
                 // Draw score
                 ctx.fillStyle = 'white';
-                ctx.font = '20px Rubik';
+                ctx.font = '26px Rubik';
                 ctx.fillText('Score: ' + score, 10, 30);
+
+                // Draw power-up timer
+                if (player.power) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '26px Rubik';
+                    ctx.fillText('Power-up: ' + (((starPowerTimeLeft - new Date().getTime()) / 1000).toFixed(1)), 10, 70);
+                }
 
                 drawSpeakerIcon();
 

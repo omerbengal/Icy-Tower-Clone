@@ -33,6 +33,8 @@
         //----------------------------- 🔻 Constants 🔻 -----------------------------/
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const PI = Math.PI;
+        var log = console.log.bind(console);
 
         // Graphics constants
         const playerImage = new Image();
@@ -457,7 +459,6 @@
 
         // Generate random x for the platform
         function randomX(platformWidth) {
-            // return Math.random() * (CANVAS_WIDTH - (platformWidth - (platformWidth / 2))) - platformWidth / 2;
             if (platformWidth == CANVAS_WIDTH) {
                 return 0;
             } else {
@@ -473,34 +474,30 @@
         }
 
         function chooseIfEnemyOnPlatform(platform) {
-            if (Math.random() < enemyOnPlatformRatio && platformCounter % 10 != 0) {
+            if (Math.random() < enemyOnPlatformRatio && platformCounter > 10 && platformCounter % 10 != 0) {
                 const enemyType = Math.random() < 0.5 ? 1 : 2;
                 platform.enemy = createEnemy(enemyType, platform);
             }
         }
 
-        function chooseIfVerticalMovingPlatform(platform) {
-            if (Math.random() < verticalMovingPlatformRatio && platformCounter % 10 != 0 && !platforms[platformCounter - 1].verticalMoving) {
+        function chooseIfVerticalMovingPlatform(platform, index) {
+            if (Math.random() < verticalMovingPlatformRatio && platformCounter > 10 && platformCounter % 10 != 0 && !platforms[index - 1].verticalMoving) {
+                let relevantPlatformGap = getPlatformGap(platform.number);
                 platform.verticalMoving = true;
-                platform.verticalSpeed = 0.25; // Speed of vertical movement
-                platform.maxVerticalMovement = 75; // Maximum distance the platform moves vertically
-                platform.currentVerticalMovement = 0; // Current distance moved
-                platform.movingUp = Math.random() < 0.5; // Randomly decide initial direction
+                platform.verticalSpeed = 0.005; // Speed of vertical movement
+                platform.maxVerticalMovement = relevantPlatformGap / 2; // Maximum distance the platform moves vertically
 
-                // Ensure the sine wave starts from its mid-point (sin(π / 2) = 1)
-                platform.currentVerticalMovement = Math.PI / 2;
+                let offset = Math.random() * relevantPlatformGap - relevantPlatformGap / 2; // Random offset within the gap
+                offset = 0;
+                platform.y += offset;
 
-                // Adjust initial Y position
-                let offset = platform.maxVerticalMovement / 2;
-                platform.y += platform.movingUp ? offset : -offset;
-                if (platform.enemy) {
-                    platform.enemy.y += platform.movingUp ? offset : -offset;
-                }
+                // set currentVerticalMovement based on the offset
+                platform.currentVerticalMovement = (offset / (relevantPlatformGap / 2) + 1) * PI / 2;
             }
         }
 
         function chooseIfStarOnPlatform(platform) {
-            if (Math.random() < starOnPlatformRatio && platformCounter % 10 != 0 && !platform.enemy) {
+            if (Math.random() < starOnPlatformRatio && platformCounter > 10 && platformCounter % 10 != 0 && !platform.enemy) {
                 platform.star = createStar(platform);
             }
         }
@@ -510,7 +507,8 @@
             let [tempWidth, tempX] = randomWidthAndX();
             platforms.push({
                 x: tempX,
-                y: CANVAS_HEIGHT - (platformGap * i) - 50,
+                y: (CANVAS_HEIGHT - 50) - (platformGap * i),
+                initialY: (CANVAS_HEIGHT - 50) - (platformGap * i),
                 width: tempWidth,
                 height: platformHeight,
                 number: platformCounter,
@@ -521,7 +519,7 @@
             });
 
             chooseIfEnemyOnPlatform(platforms[i]);
-            chooseIfVerticalMovingPlatform(platforms[i]);
+            chooseIfVerticalMovingPlatform(platforms[i], i);
             chooseIfStarOnPlatform(platforms[i]);
 
             platformCounter++;
@@ -532,6 +530,7 @@
                 updatePlatformGap();
                 let [tempWidth, tempX] = randomWidthAndX();
                 platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
+                platform.initialY = platform.y;
                 platform.x = tempX;
                 platform.width = tempWidth;
                 platform.number = platformCounter; // Increase platform number
@@ -540,9 +539,10 @@
                 platform.falling = false;
                 platform.fallSpeed = 0;
                 platform.xToDrawFromInSprite = Math.random() * (4628 - tempWidth);
+                platform.verticalMoving = null;
 
                 chooseIfEnemyOnPlatform(platform);
-                chooseIfVerticalMovingPlatform(platform);
+                chooseIfVerticalMovingPlatform(platform, index);
                 chooseIfStarOnPlatform(platform);
 
                 platformCounter++;
@@ -551,39 +551,22 @@
 
         function updateVerticalMovement(platform) {
             if (platform.verticalMoving) {
-                platform.currentVerticalMovement += 0.025; // lower = larger distance
+
+                platform.currentVerticalMovement += platform.verticalSpeed;
 
                 // Use sine wave for smooth easing transition
-                let sineWave = Math.sin(platform.currentVerticalMovement * platform.verticalSpeed);
-
-                // Check if platform is moving up or down
-                if (platform.movingUp) {
-                    platform.y -= sineWave * platform.verticalSpeed; // subtract for moving up
-                } else {
-                    platform.y += sineWave * platform.verticalSpeed; // add for moving down
-                }
+                let sineWave = Math.sin(platform.currentVerticalMovement);
+                platform.y += sineWave * platform.maxVerticalMovement * platform.verticalSpeed;
 
                 // Move enemy if exists
                 if (platform.enemy) {
-                    if (platform.movingUp) {
-                        platform.enemy.y -= sineWave * platform.verticalSpeed; // subtract for moving up
-                    } else {
-                        platform.enemy.y += sineWave * platform.verticalSpeed; // add for moving down
-                    }
+                    platform.enemy.y += sineWave * platform.maxVerticalMovement * platform.verticalSpeed;
                 }
 
                 if (platform.star) {
-                    if (platform.movingUp) {
-                        platform.star.y -= sineWave * platform.verticalSpeed; // subtract for moving up
-                    } else {
-                        platform.star.y += sineWave * platform.verticalSpeed; // add for moving down
-                    }
+                    platform.star.y += sineWave * platform.maxVerticalMovement * platform.verticalSpeed;
                 }
 
-                // Check if platform has reached its maximum vertical movement
-                if (platform.currentVerticalMovement >= platform.maxVerticalMovement) {
-                    platform.currentVerticalMovement = 0; // reset current vertical movement
-                }
             }
         }
 
@@ -595,6 +578,12 @@
                 platformGap += gapIncreaseStep;
             }
         }
+
+        // function that returns the desired platformGap based on a platform number
+        function getPlatformGap(platformNumber) {
+            return initialPlatformGap + gapIncreaseStep * Math.floor(Math.abs(platformNumber - 1) / 10);
+        }
+
 
         //----------------------------- 🔺 Platforms 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
@@ -611,9 +600,15 @@
                 }
                 playerAnimationProgress = 0;
                 // player.velY = baseJump - Math.abs(player.velX); // Old "running faster = higher jump" - linear growth
-                player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
-                if (!isSpacebarPressedForAudio) {
-                    isSpacebarPressedForAudio = true;
+                if ((keys[37] && player.x <= 0) || (keys[39] && player.x + player.width >= CANVAS_WIDTH)) { // If the player jumps after "accelerating" into the wall
+                    player.velY = baseJump;
+                } else {
+                    player.velY = baseJump - Math.pow(Math.abs(player.velX), 2) * 0.2; // New "running faster = higher jump" - exponential growth
+                }
+
+                // First spacebar plays the audio
+                if (!firstSpacebarPressedForAudio) {
+                    firstSpacebarPressedForAudio = true;
                     toggleMute();
                 }
             }
@@ -635,8 +630,8 @@
 
         // Add touch event listeners
         canvas.addEventListener('touchstart', function (e) {
-            if (!isSpacebarPressedForAudio) {
-                isSpacebarPressedForAudio = true;
+            if (!firstSpacebarPressedForAudio) {
+                firstSpacebarPressedForAudio = true;
                 toggleMute();
             }
             e.preventDefault();
@@ -710,7 +705,7 @@
         }
         let isMuted = true;
         let soundIcon = '▶️';
-        let isSpacebarPressedForAudio = false; // For the audio to only start once when spacebar is pressed
+        let firstSpacebarPressedForAudio = false; // For the audio to only start once when spacebar is pressed
 
         function drawSpeakerIcon() {
             ctx.fillStyle = 'black';
@@ -748,8 +743,8 @@
 
             // Check if the event occurred within the speaker icon bounds
             if (x > CANVAS_WIDTH - 35 && x < CANVAS_WIDTH && y > 0 && y < 40) {
-                if (!isSpacebarPressedForAudio) {
-                    isSpacebarPressedForAudio = true;
+                if (!firstSpacebarPressedForAudio) {
+                    firstSpacebarPressedForAudio = true;
                 }
                 toggleMute();
             }
@@ -866,7 +861,7 @@
                 gameAudio.play();
                 soundIcon = '⏸️';
             }
-            // isSpacebarPressedForAudio = false;
+            // firstSpacebarPressedForAudio = false;
             heighestPlatformIndex = 9;
             score = 0;
             platformWidthRange = [...initialPlatformWidthRange];
@@ -901,12 +896,8 @@
             let effectivePlatformY = platform.y;
             if (platform.verticalMoving) {
                 // If platform is moving upwards, adjust its effective position for collision detection
-                let sineWave = Math.sin(platform.currentVerticalMovement * platform.verticalSpeed);
-                if (platform.movingUp) {
-                    effectivePlatformY += sineWave * platform.verticalSpeed;
-                } else {
-                    effectivePlatformY -= sineWave * platform.verticalSpeed;
-                }
+                let sineWave = Math.sin(platform.currentVerticalMovement);
+                effectivePlatformY -= sineWave * platform.maxVerticalMovement * platform.verticalSpeed;
             }
 
             const timeToCollide = (effectivePlatformY - player.height - player.y) / player.velY;
@@ -1000,12 +991,21 @@
                         repositionPlatform(platform, index);
                     });
                 }
-
                 // Collision with the canvas edges
-                if (player.x >= CANVAS_WIDTH - player.width) {
-                    player.x = CANVAS_WIDTH - player.width;
+                if (player.x + player.width >= CANVAS_WIDTH) {
+                    if (player.velX > 0) {
+                        player.x = CANVAS_WIDTH - player.width;
+                        if (player.jumping) { // Bounce off the wall while in the air after jumping
+                            player.velX *= -0.5;
+                        }
+                    }
                 } else if (player.x <= 0) {
-                    player.x = 0;
+                    if (player.velX < 0) {
+                        player.x = 0;
+                        if (player.jumping) { // Bounce off the wall while in the air after jumping
+                            player.velX *= -0.5;
+                        }
+                    }
                 }
 
                 if (player.y >= CANVAS_HEIGHT - player.height) {

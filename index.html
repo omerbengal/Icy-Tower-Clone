@@ -699,9 +699,11 @@
         let gameAudio = null;
         if (isMobileDevice()) {
             gameAudio = document.getElementById('gameAudioLower');
+            gameAudio.loop = true;
         } else {
             gameAudio = document.getElementById('gameAudio');
-            gameAudio.volume = 0.2;
+            gameAudio.volume = 0.1;
+            gameAudio.loop = true;
         }
         let isMuted = true;
         let soundIcon = '▶️';
@@ -1156,7 +1158,6 @@
                 }
 
                 drawSpeakerIcon();
-
 
                 gameFrame++;
                 requestAnimationFrame(updateGame); // Loop

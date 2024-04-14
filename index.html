@@ -658,22 +658,23 @@
             let touchMoveY = e.touches[0].clientY;
             let currentTime = Date.now();
 
-            let deltaX = touchMoveX - lastTouchX;
+            let deltaX = touchMoveX - lastTouchX; // Get the pixel distance moved
+            let deltaY = lastTouchY - touchMoveY; // Get the pixel distance moved
             let deltaTime = currentTime - lastTouchTime;
 
-            // Normalize the swipe speed
-            let swipeSensitivity = 5; // Adjust for sensitivity - higher = sensitive is stronger
-            let maxSwipeSpeed = 2; // Maximum speed per swipe - higher = faster max speed
+            // Horizontal swipe detection for moving the player
+            let swipeSensitivity = 0.005; // Adjust this sensitivity based on the feel
+            let maxSwipeSpeed = 5; // Adjust the maximum speed for better control
 
             if (deltaTime > 0) { // Avoid division by zero
-                let swipeSpeed = (deltaX / deltaTime) * swipeSensitivity;
+                let swipeSpeed = (deltaX / deltaTime) * swipeSensitivity * window.innerWidth;
                 swipeSpeed = Math.max(Math.min(swipeSpeed, maxSwipeSpeed), -maxSwipeSpeed);
                 player.velX += swipeSpeed;
                 player.velX = Math.max(Math.min(player.velX, player.speed), -player.speed);
             }
 
-            // Upward swipe detection
-            if (!player.jumping && player.onPlatform && lastTouchY - touchMoveY > 10) { // 10 = minimum swipe distance
+            // Upward swipe detection for jumping
+            if (!player.jumping && player.onPlatform && deltaY > 10) { // Checking against pixel value
                 player.jumping = true;
                 if (player.velX > 0) {
                     currentPlayerState = playerStates.jumpRight;
@@ -681,7 +682,7 @@
                     currentPlayerState = playerStates.jumpLeft;
                 }
                 playerAnimationProgress = 0;
-                player.velY = baseJump * 1.9 - Math.abs(player.velX) * 0.7;
+                player.velY = baseJump * 1.5 - Math.abs(player.velX) * 0.7; // Adjust base jump strength
                 isSwipeUpDetected = true;
             }
 
@@ -689,6 +690,8 @@
             lastTouchY = touchMoveY;
             lastTouchTime = currentTime;
         }, { passive: false });
+
+
 
         canvas.addEventListener('touchend', function (e) {
             e.preventDefault();
@@ -1071,7 +1074,7 @@
                             platform.playerStandTime += 1; // Increment platform's stand time
 
                             // Check if the player has been standing on the platform for more than 3 seconds
-                            if (platform.playerStandTime > 240) {
+                            if (platform.playerStandTime > 180) {
                                 platform.falling = true;
                                 platform.isMoving = false;
                             }

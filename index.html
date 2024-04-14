@@ -854,36 +854,36 @@
         //////////////////////////////////////////////////////////////////////////////
         //----------------------------- 🔻 Reset game 🔻 -----------------------------/
         function resetGame() {
-            gameOver = false;
+            gameOver = false; // Reset the game over flag
 
-            // Reset player's stuff
-            let player = {
-                x: (CANVAS_WIDTH / 2) - 10,
-                y: playerStartY,
+            // Reset player's properties
+            player = {
+                x: (CANVAS_WIDTH / 2) - playerWidth / 2,
+                y: playerStartY, // Make sure this is on a platform
                 width: playerWidth,
                 height: playerHeight,
                 speed: 50, // horizonal max speed
                 velX: 0,
                 velY: 0,
                 jumping: false,
-                onPlatform: true,
+                onPlatform: true, // Ensure player starts on a platform
                 lastRunningDirection: 'right',
                 power: false
             };
 
-            // Reset audio stuff
+            // Reset audio and visual elements
             if (!isMuted) {
                 gameAudio.play();
                 soundIcon = '⏸️';
             }
 
-            // Reset platforms' stuff
+            // Reset platforms
             platforms = [];
             platformCounter = 0;
             platformWidthRange = [...initialPlatformWidthRange];
             platformGap = initialPlatformGap;
 
-            // Generate the 10 platforms
+            // Generate the initial platforms
             for (let i = 0; i < 10; i++) {
                 let [tempWidth, tempX] = randomWidthAndX();
                 platforms.push({
@@ -892,9 +892,9 @@
                     width: tempWidth,
                     height: platformHeight,
                     number: platformCounter,
-                    playerStandTime: 0, // time in milliseconds the player has been on the platform
-                    falling: false, // indicates whether the platform is falling
-                    fallSpeed: 0, // speed at which the platform falls
+                    playerStandTime: 0,
+                    falling: false,
+                    fallSpeed: 0,
                     xToDrawFromInSprite: Math.random() * (4628 - tempWidth)
                 });
 
@@ -908,8 +908,12 @@
 
             // Reset score
             score = 0;
+            updatePlatformMoveDownSpeed();
 
-            // Start the game loop all over again crazy 🤪
+            // Clear the canvas to remove any game over text
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Start the game loop
             updateGame();
         }
         //----------------------------- 🔺 Reset game 🔺 -----------------------------/

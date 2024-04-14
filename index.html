@@ -590,7 +590,7 @@
         }
 
         function updatePlatformMoveDownSpeed() {
-            platformMoveDownSpeed = Math.min(1, Math.floor(score / 10) * 0.15);
+            platformMoveDownSpeed = Math.min(1, Math.floor(score / 10) * 0.2);
         }
 
 
@@ -681,7 +681,7 @@
                     currentPlayerState = playerStates.jumpLeft;
                 }
                 playerAnimationProgress = 0;
-                player.velY = baseJump * 1.9 - Math.abs(player.velX) * 0.75;
+                player.velY = baseJump * 1.9 - Math.abs(player.velX) * 0.7;
                 isSwipeUpDetected = true;
             }
 

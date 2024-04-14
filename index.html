@@ -274,8 +274,14 @@
             const userAgent = navigator.userAgent || navigator.vendor || window.opera;
 
             // Regular expressions for mobile User Agent detection
-            return /android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+            const isMobile = /android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+
+            // Additional check for iPads running iPadOS 13 or later in desktop mode
+            const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+
+            return isMobile || isIPadOS;
         }
+
 
         function resizeCanvas() {
             if (isMobileDevice()) {
@@ -315,7 +321,6 @@
             jumping: false,
             onPlatform: true,
             lastRunningDirection: 'right',
-            stuckOnSide: 1, // 0 = stuck, 1 = not stuck - preperation for future bug fix
             power: false
         };
         //----------------------------- 🔺 Player 🔺 -----------------------------/
@@ -436,7 +441,7 @@
         const gapInterval = 10; // Interval after which the gap increases
 
         let platformGap = initialPlatformGap;
-
+        let heighestPlatformIndex = 9; // The platform that needs to be generated - should be generated above the heighest platform
 
         const enemyOnPlatformRatio = 0.05; // 5% chance of enemy on platform
         const verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
@@ -508,7 +513,6 @@
             platforms.push({
                 x: tempX,
                 y: (CANVAS_HEIGHT - 50) - (platformGap * i),
-                initialY: (CANVAS_HEIGHT - 50) - (platformGap * i),
                 width: tempWidth,
                 height: platformHeight,
                 number: platformCounter,
@@ -530,7 +534,6 @@
                 updatePlatformGap();
                 let [tempWidth, tempX] = randomWidthAndX();
                 platform.y = platforms[heighestPlatformIndex].y - platformGap; // Move platform to the top
-                platform.initialY = platform.y;
                 platform.x = tempX;
                 platform.width = tempWidth;
                 platform.number = platformCounter; // Increase platform number
@@ -846,7 +849,9 @@
         //----------------------------- 🔻 Reset game 🔻 -----------------------------/
         function resetGame() {
             gameOver = false;
-            player = {
+
+            // Reset player's stuff
+            let player = {
                 x: (CANVAS_WIDTH / 2) - 10,
                 y: playerStartY,
                 width: playerWidth,
@@ -855,24 +860,29 @@
                 velX: 0,
                 velY: 0,
                 jumping: false,
-                onPlatform: true
+                onPlatform: true,
+                lastRunningDirection: 'right',
+                power: false
             };
-            platforms = [];
-            platformCounter = 0;
+
+            // Reset audio stuff
             if (!isMuted) {
                 gameAudio.play();
                 soundIcon = '⏸️';
             }
-            // firstSpacebarPressedForAudio = false;
-            heighestPlatformIndex = 9;
-            score = 0;
+
+            // Reset platforms' stuff
+            platforms = [];
+            platformCounter = 0;
             platformWidthRange = [...initialPlatformWidthRange];
             platformGap = initialPlatformGap;
+
+            // Generate the 10 platforms
             for (let i = 0; i < 10; i++) {
                 let [tempWidth, tempX] = randomWidthAndX();
                 platforms.push({
                     x: tempX,
-                    y: CANVAS_HEIGHT - (platformGap * i) - 50,
+                    y: (CANVAS_HEIGHT - 50) - (platformGap * i),
                     width: tempWidth,
                     height: platformHeight,
                     number: platformCounter,
@@ -881,12 +891,19 @@
                     fallSpeed: 0, // speed at which the platform falls
                     xToDrawFromInSprite: Math.random() * (4628 - tempWidth)
                 });
-                if (Math.random() < 0.05 && platformCounter % 10 != 0) {
-                    const enemyType = Math.random() < 0.5 ? 1 : 2;
-                    platforms[i].enemy = createEnemy(enemyType, platforms[i]);
-                }
+
+                chooseIfEnemyOnPlatform(platforms[i]);
+                chooseIfVerticalMovingPlatform(platforms[i], i);
+                chooseIfStarOnPlatform(platforms[i]);
+
                 platformCounter++;
             }
+            heighestPlatformIndex = 9;
+
+            // Reset score
+            score = 0;
+
+            // Start the game loop all over again crazy 🤪
             updateGame();
         }
         //----------------------------- 🔺 Reset game 🔺 -----------------------------/
@@ -925,7 +942,6 @@
         //----------------------------- 🔺 Collision detection 🔺 -----------------------------/
         //////////////////////////////////////////////////////////////////////////////////////
         //------------------------------ 🔻 Loop variables 🔻 ------------------------------/
-        let heighestPlatformIndex = 9; // The platform that needs to be generated - should be generated above the heighest platform
         let score = 0;
         let gameFrame = 0;
         //------------------------------ 🔺 Loop variables 🔺 ------------------------------/
@@ -934,6 +950,8 @@
         function updateGame() {
             if (!gameOver) {
 
+                // Set the current player state: idle, run, jump, fall
+                // AND - set the direction of the state
                 if (player.jumping && player.velY < 0) {
                     currentPlayerState = player.velX > 0 ? playerStates.jumpRight : playerStates.jumpLeft;
                 } else if (player.velY > 0) {
@@ -960,20 +978,16 @@
                     }
                 }
 
-                // trying the possibility of not stopping the player when left/right key is pressed
-                // if (!keys[37] && !keys[39]) {
-                //     player.velX *= friction;
-                // }
-
                 player.velX *= friction;
 
                 player.x += player.velX;
                 player.y += player.velY;
 
+                // Check if player is on a platform
                 const hasCollided = platformYCollision(platforms);
 
                 if (!hasCollided) {
-                    player.velY += gravity; // Apply gravity if no collision
+                    player.velY += gravity; // Apply gravity if player is not on a platform
                 }
 
                 // Screen scroll
@@ -993,23 +1007,25 @@
                         repositionPlatform(platform, index);
                     });
                 }
+
                 // Collision with the canvas edges
                 if (player.x + player.width >= CANVAS_WIDTH) {
                     if (player.velX > 0) {
                         player.x = CANVAS_WIDTH - player.width;
                         if (player.jumping) { // Bounce off the wall while in the air after jumping
-                            player.velX *= -0.5;
+                            player.velX *= -0.75;
                         }
                     }
                 } else if (player.x <= 0) {
                     if (player.velX < 0) {
                         player.x = 0;
                         if (player.jumping) { // Bounce off the wall while in the air after jumping
-                            player.velX *= -0.5;
+                            player.velX *= -0.75;
                         }
                     }
                 }
 
+                // Collision with the canvas bottom
                 if (player.y >= CANVAS_HEIGHT - player.height) {
                     player.y = CANVAS_HEIGHT - player.height;
                     player.jumping = false;
@@ -1018,9 +1034,12 @@
                     gameOver = true;
                 }
 
-                // Platform collision
+
                 player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
+
+                // Go over all platforms and check for stuff
                 platforms.forEach(function callback(platform, index) {
+                    // Platform collision detection
                     let toi = calculateTOI(platform); // Calculate time of impact with the current platform
                     if (toi !== Infinity && player.velY > 0 && player.x + player.width > platform.x && player.x < platform.x + platform.width) {
                         player.jumping = false;
@@ -1028,45 +1047,43 @@
                         player.y = platform.y - player.height;
                         player.onPlatform = true;
 
-                        if (score < platform.number) { // Update the score
+                        // Update the score
+                        if (score < platform.number) {
                             score = platform.number;
                         }
 
+                        // Increment the player's stand time on the platform
                         if (platform.falling === false && platform.number % 10 != 0) {
                             platform.playerStandTime += 1; // Increment platform's stand time
 
+                            // Check if the player has been standing on the platform for more than 3 seconds
                             if (platform.playerStandTime > 240) {
                                 platform.falling = true;
                                 platform.isMoving = false;
                             }
                         }
                     } else {
-                        platform.playerStandTime = 0; // Reset if player is not on platform
+                        // Reset the player's stand time on the platform
+                        platform.playerStandTime = 0;
                     }
-                });
 
-                // Check for player-enemy collisions
-                platforms.forEach(platform => {
+                    // Check for player-enemy collisions
                     if (platform.enemy) {
                         updateEnemyPosition(platform.enemy, platform);
                         if (checkPlayerEnemyCollision(platform.enemy)) {
                             gameOver = true;
                         }
                     }
-                });
 
-                // Check for player-star collisions
-                platforms.forEach(platform => {
+                    // Check for player-star collisions
                     if (platform.star) {
                         if (checkPlayerStarCollision(platform.star)) {
                             platform.star = null;
                             collectStar();
                         }
                     }
-                });
 
-                // Handle falling platforms
-                platforms.forEach(function callback(platform, index) {
+                    // Handle falling platforms
                     if (platform.falling) {
                         platform.fallSpeed += gravity; // Increase fall speed by gravity
                         platform.y += platform.fallSpeed; // Apply fall speed
@@ -1078,13 +1095,13 @@
                             platform.star.y += platform.fallSpeed;
                         }
                     }
+                    // Reposition the platform if it falls off-screen
                     repositionPlatform(platform, index);
-                });
 
-                // Handle vertical moving platforms
-                platforms.forEach(platform => {
+                    // Update vertical movement if the platform is moving vertically
                     updateVerticalMovement(platform);
                 });
+
 
                 // Clear canvas
                 ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);

@@ -443,6 +443,8 @@
         let platformGap = initialPlatformGap;
         let heighestPlatformIndex = 9; // The platform that needs to be generated - should be generated above the heighest platform
 
+        let platformMoveDownSpeed = 0; // Speed at which the platforms move down
+
         const enemyOnPlatformRatio = 0.05; // 5% chance of enemy on platform
         const verticalMovingPlatformRatio = 0.06; // 6% chance of vertical moving platform
         const starOnPlatformRatio = 0.05; // 5% chance of star on platform
@@ -585,6 +587,10 @@
         // function that returns the desired platformGap based on a platform number
         function getPlatformGap(platformNumber) {
             return initialPlatformGap + gapIncreaseStep * Math.floor(Math.abs(platformNumber - 1) / 10);
+        }
+
+        function updatePlatformMoveDownSpeed() {
+            platformMoveDownSpeed = Math.min(1, Math.floor(score / 10) * 0.15);
         }
 
 
@@ -919,6 +925,9 @@
                 effectivePlatformY -= sineWave * platform.maxVerticalMovement * platform.verticalSpeed;
             }
 
+            // Adjust the effective platform Y according to the const platformMoveDownSpeed
+            effectivePlatformY -= platformMoveDownSpeed;
+
             const timeToCollide = (effectivePlatformY - player.height - player.y) / player.velY;
             return timeToCollide >= 0 && timeToCollide <= 1 ? timeToCollide : Infinity;
         }
@@ -1050,6 +1059,7 @@
                         // Update the score
                         if (score < platform.number) {
                             score = platform.number;
+                            updatePlatformMoveDownSpeed();
                         }
 
                         // Increment the player's stand time on the platform
@@ -1095,6 +1105,15 @@
                             platform.star.y += platform.fallSpeed;
                         }
                     }
+
+                    platform.y += platformMoveDownSpeed; // Move the platform down
+                    if (platform.enemy) {
+                        platform.enemy.y += platformMoveDownSpeed; // Move any enemies down with their platform
+                    }
+                    if (platform.star) {
+                        platform.star.y += platformMoveDownSpeed; // Move any stars down with their platform
+                    }
+
                     // Reposition the platform if it falls off-screen
                     repositionPlatform(platform, index);
 

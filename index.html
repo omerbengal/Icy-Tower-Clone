@@ -319,7 +319,8 @@
             velX: 0,
             velY: 0,
             jumping: false,
-            onPlatform: true,
+            onPlatform: false,
+            onPlatformIndex: 0,
             lastRunningDirection: 'right',
             power: false
         };
@@ -589,10 +590,39 @@
             return initialPlatformGap + gapIncreaseStep * Math.floor(Math.abs(platformNumber - 1) / 10);
         }
 
+        // Handle falling platforms
+        function handleFallingPlatforms(platform) {
+            if (platform.falling) {
+                platform.fallSpeed += gravity; // Increase fall speed by gravity
+                platform.y += platform.fallSpeed; // Apply fall speed
+                // if the platform has enemy - move the enemy down
+                if (platform.enemy) {
+                    platform.enemy.y += platform.fallSpeed;
+                }
+                if (platform.star) {
+                    platform.star.y += platform.fallSpeed;
+                }
+            }
+        }
+
         function updatePlatformMoveDownSpeed() {
             platformMoveDownSpeed = Math.min(1, Math.floor(score / 10) * 0.2);
         }
 
+        // Update game's "DOWN" movement
+        function downMovement(platform) {
+            platform.y += platformMoveDownSpeed; // Move the platform down
+            if (platform.enemy) {
+                platform.enemy.y += platformMoveDownSpeed; // Move any enemies down with their platform
+            }
+            if (platform.star) {
+                platform.star.y += platformMoveDownSpeed; // Move any stars down with their platform
+            }
+
+            if (player.onPlatform) {
+                player.y = platforms[player.onPlatformIndex].y - player.height;
+            }
+        }
 
         //----------------------------- 🔺 Platforms 🔺 -----------------------------/
         ///////////////////////////////////////////////////////////////////////////////
@@ -602,6 +632,7 @@
             keys[e.keyCode] = true;
             if (e.keyCode == 32 && !player.jumping && player.onPlatform && !player.velY > 0) { // Space key for jump
                 player.jumping = true;
+                player.onPlatform = false;
                 if (player.velX > 0) {
                     currentPlayerState = playerStates.jumpRight;
                 } else {
@@ -676,6 +707,7 @@
             // Upward swipe detection for jumping
             if (!player.jumping && player.onPlatform && deltaY > 10) { // Checking against pixel value
                 player.jumping = true;
+                player.onPlatform = false;
                 if (player.velX > 0) {
                     currentPlayerState = playerStates.jumpRight;
                 } else {
@@ -869,7 +901,8 @@
                 velX: 0,
                 velY: 0,
                 jumping: false,
-                onPlatform: true, // Ensure player starts on a platform
+                onPlatform: false, // Ensure player starts on a platform
+                onPlatformIndex: 0,
                 lastRunningDirection: 'right',
                 power: false
             };
@@ -939,21 +972,24 @@
             return timeToCollide >= 0 && timeToCollide <= 1 ? timeToCollide : Infinity;
         }
 
-        // Collision detection and handling function
-        function platformYCollision(platforms) {
-            let collisionDetected = false;
-
-            for (let i = 0; i < platforms.length; i++) {
-                const platform = platforms[i];
-                const toi = calculateTOI(platform);
-
-                if (toi !== Infinity) {
-                    collisionDetected = true;
-                    break; // Stop checking after the first collision is found
+        // Check for player-enemy collisions
+        function playerEnemyCollisionDetection(platform) {
+            if (platform.enemy) {
+                updateEnemyPosition(platform.enemy, platform);
+                if (checkPlayerEnemyCollision(platform.enemy)) {
+                    gameOver = true;
                 }
             }
+        }
 
-            return collisionDetected;
+        // Check for player-star collisions
+        function playerStarCollisionDetection(platform) {
+            if (platform.star) {
+                if (checkPlayerStarCollision(platform.star)) {
+                    collectStar();
+                    platform.star = null;
+                }
+            }
         }
         //----------------------------- 🔺 Collision detection 🔺 -----------------------------/
         //////////////////////////////////////////////////////////////////////////////////////
@@ -999,11 +1035,21 @@
                 player.x += player.velX;
                 player.y += player.velY;
 
-                // Check if player is on a platform
-                const hasCollided = platformYCollision(platforms);
+                // Check if player is on a platform (only Y-wise)
+                if (player.onPlatform) {
+                    // Now, check if player is on a platform (only X-wise)
+                    if (player.x + player.width >= platforms[player.onPlatformIndex].x && player.x <= platforms[player.onPlatformIndex].x + platforms[player.onPlatformIndex].width) {
+                        // Player is TRULY on a platform
+                        player.onPlatform = true;
+                    } else {
+                        // Player is not on a platform X-wise
+                        player.onPlatform = false;
+                    }
+                }
 
-                if (!hasCollided) {
-                    player.velY += gravity; // Apply gravity if player is not on a platform
+                if (!player.onPlatform) {
+                    // Apply gravity if player is not on a platform
+                    player.velY += gravity;
                 }
 
                 // Screen scroll
@@ -1041,6 +1087,7 @@
                     }
                 }
 
+
                 // Collision with the canvas bottom
                 if (player.y >= CANVAS_HEIGHT - player.height) {
                     player.y = CANVAS_HEIGHT - player.height;
@@ -1051,7 +1098,7 @@
                 }
 
 
-                player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
+                // player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
 
                 // Go over all platforms and check for stuff
                 platforms.forEach(function callback(platform, index) {
@@ -1062,6 +1109,7 @@
                         player.velY = 0;
                         player.y = platform.y - player.height;
                         player.onPlatform = true;
+                        player.onPlatformIndex = index;
 
                         // Update the score
                         if (score < platform.number) {
@@ -1084,42 +1132,13 @@
                         platform.playerStandTime = 0;
                     }
 
-                    // Check for player-enemy collisions
-                    if (platform.enemy) {
-                        updateEnemyPosition(platform.enemy, platform);
-                        if (checkPlayerEnemyCollision(platform.enemy)) {
-                            gameOver = true;
-                        }
-                    }
+                    playerEnemyCollisionDetection(platform);
 
-                    // Check for player-star collisions
-                    if (platform.star) {
-                        if (checkPlayerStarCollision(platform.star)) {
-                            platform.star = null;
-                            collectStar();
-                        }
-                    }
+                    playerStarCollisionDetection(platform);
 
-                    // Handle falling platforms
-                    if (platform.falling) {
-                        platform.fallSpeed += gravity; // Increase fall speed by gravity
-                        platform.y += platform.fallSpeed; // Apply fall speed
-                        // if the platform has enemy - move the enemy down
-                        if (platform.enemy) {
-                            platform.enemy.y += platform.fallSpeed;
-                        }
-                        if (platform.star) {
-                            platform.star.y += platform.fallSpeed;
-                        }
-                    }
+                    handleFallingPlatforms(platform);
 
-                    platform.y += platformMoveDownSpeed; // Move the platform down
-                    if (platform.enemy) {
-                        platform.enemy.y += platformMoveDownSpeed; // Move any enemies down with their platform
-                    }
-                    if (platform.star) {
-                        platform.star.y += platformMoveDownSpeed; // Move any stars down with their platform
-                    }
+                    downMovement(platform);
 
                     // Reposition the platform if it falls off-screen
                     repositionPlatform(platform, index);

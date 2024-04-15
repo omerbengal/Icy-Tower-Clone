@@ -619,8 +619,8 @@
                 platform.star.y += platformMoveDownSpeed; // Move any stars down with their platform
             }
 
-            if (player.onPlatform) {
-                player.y = platforms[player.onPlatformIndex].y - player.height;
+            if (player.onPlatform && platform === platforms[player.onPlatformIndex] && !platform.falling) {
+                player.y = platform.y - player.height;
             }
         }
 
@@ -1037,8 +1037,11 @@
 
                 // Check if player is on a platform (only Y-wise)
                 if (player.onPlatform) {
-                    // Now, check if player is on a platform (only X-wise)
-                    if (player.x + player.width >= platforms[player.onPlatformIndex].x && player.x <= platforms[player.onPlatformIndex].x + platforms[player.onPlatformIndex].width) {
+                    // Now, check if player is on a platform (only X-wise) and that the platform is not falling
+                    if (player.x + player.width >= platforms[player.onPlatformIndex].x &&
+                        player.x <= platforms[player.onPlatformIndex].x + platforms[player.onPlatformIndex].width &&
+                        !platforms[player.onPlatformIndex].falling
+                    ) {
                         // Player is TRULY on a platform
                         player.onPlatform = true;
                     } else {
@@ -1047,7 +1050,19 @@
                     }
                 }
 
-                if (!player.onPlatform) {
+                // Check if player is TRULY on a platform
+                if (player.onPlatform) {
+                    //If so - increment the player's stand time on the platform
+                    if (!platforms[player.onPlatformIndex].falling && platforms[player.onPlatformIndex].number % 10 != 0) {
+                        if (Date.now() - platforms[player.onPlatformIndex].playerStandTime > 3000) { // 3000 milliseconds for 3 seconds
+                            platforms[player.onPlatformIndex].falling = true;
+                            platforms[player.onPlatformIndex].isMoving = false;
+                        }
+                    }
+                } else {
+                    // Player is not TRULY on a platform - therefore, reset the player's stand time on the platform
+                    platforms[player.onPlatformIndex].playerStandTime = 0;
+
                     // Apply gravity if player is not on a platform
                     player.velY += gravity;
                 }
@@ -1098,8 +1113,6 @@
                 }
 
 
-                // player.onPlatform = false; // reset the flag, so it can be set to true if player is on a platform
-
                 // Go over all platforms and check for stuff
                 platforms.forEach(function callback(platform, index) {
                     // Platform collision detection
@@ -1117,19 +1130,8 @@
                             updatePlatformMoveDownSpeed();
                         }
 
-                        // Increment the player's stand time on the platform
-                        if (platform.falling === false && platform.number % 10 != 0) {
-                            platform.playerStandTime += 1; // Increment platform's stand time
-
-                            // Check if the player has been standing on the platform for more than 3 seconds
-                            if (platform.playerStandTime > 180) {
-                                platform.falling = true;
-                                platform.isMoving = false;
-                            }
-                        }
-                    } else {
-                        // Reset the player's stand time on the platform
-                        platform.playerStandTime = 0;
+                        // Record the player's stand time on the platform
+                        platforms[player.onPlatformIndex].playerStandTime = Date.now();
                     }
 
                     playerEnemyCollisionDetection(platform);
